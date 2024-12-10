@@ -1,19 +1,36 @@
 const express = require('express');
-const bodyParser = require('body-parser');
 const cors = require('cors');
-const registerRoutes = require('./routes/registerRoutes');
+const mongoose = require('mongoose');
+const formRoutes = require('./router/registerRoute'); 
+const SignupRouter = require('./router/signupRouter')
+const LoginRouter = require('./router/loginRouter')
+const bodyParser = require('body-parser');
 
 const app = express();
+const PORT = 3000;  
 
-// Middleware
+const corsOptions = {
+  origin: 'http://localhost:5173', 
+  methods: ['GET', 'POST'],
+  allowedHeaders: ['Content-Type'],
+};
+
+// Middleware setup
+app.use(cors(corsOptions));
 app.use(bodyParser.json());
-app.use(cors()); 
 
-// API routes
-app.use('/register', registerRoutes);
+// Routes setup
+app.use('/', formRoutes);
+app.use('/',SignupRouter)
+app.use('/',LoginRouter)
 
-const PORT = process.env.PORT || 5000;
+// Connect to MongoDB
+mongoose.connect('mongodb://localhost:27017/mindVista', { useNewUrlParser: true, useUnifiedTopology: true })
+  .then(() => console.log('Connected to MongoDB'))
+  .catch((err) => console.error('MongoDB connection error:', err));
+
+// Start the server
 app.listen(PORT, () => {
-  console.log(`Server is running on http://localhost:${PORT}`);
+  console.log(`Server running on http://localhost:${PORT}`);
 });
 
