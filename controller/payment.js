@@ -2,7 +2,7 @@
 
 const axios = require('axios');
 const crypto = require('crypto');
-const { PAYTM_MID, PAYTM_KEY, PAYTM_WEBSITE } = require('../config');
+const { PAYTM_MID, PAYTM_KEY, PAYTM_WEBSITE } = require('../config/config');
 
 // Helper function to generate checksum
 function generateChecksum(params, key) {
