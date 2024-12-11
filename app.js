@@ -4,6 +4,7 @@ const mongoose = require('mongoose');
 const formRoutes = require('./router/registerRoute'); 
 const SignupRouter = require('./router/signupRouter')
 const LoginRouter = require('./router/loginRouter')
+const PaymentRouter = require('./router/paymentRouter')
 const bodyParser = require('body-parser');
 
 const app = express();
@@ -16,13 +17,15 @@ const corsOptions = {
 };
 
 // Middleware setup
+
+
 app.use(cors(corsOptions));
 app.use(bodyParser.json());
-
 // Routes setup
 app.use('/', formRoutes);
 app.use('/',SignupRouter)
 app.use('/',LoginRouter)
+app.use('/',PaymentRouter)
 
 // Connect to MongoDB
 mongoose.connect('mongodb://localhost:27017/mindVista', { useNewUrlParser: true, useUnifiedTopology: true })
