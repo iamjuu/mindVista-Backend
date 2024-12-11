@@ -9,13 +9,11 @@ module.exports = {
     }
 
     try {
-      // Check if email already exists
       const existingUser = await Signup.findOne({ email });
       if (existingUser) {
         return res.status(409).json({ message: 'Email already exists!' });
       }
 
-      // Create new user
       const newUser = new Signup({ username, email, password });
       await newUser.save();
 
