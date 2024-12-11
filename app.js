@@ -16,9 +16,10 @@ const corsOptions = {
 };
 
 // Middleware setup
+
+
 app.use(cors(corsOptions));
 app.use(bodyParser.json());
-
 // Routes setup
 app.use('/', formRoutes);
 app.use('/',SignupRouter)
