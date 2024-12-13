@@ -7,6 +7,7 @@ const RegisterScheme = new mongoose.Schema({
   location: String,
   age: Number,
   time: String,
+  slot:String,
   date: String,
 });
 const Register = mongoose.model('register', RegisterScheme);
