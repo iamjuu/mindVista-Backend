@@ -2,18 +2,17 @@ const FormData = require('../models/register'); // Ensure this is the correct mo
 const jwt = require('jsonwebtoken');
 const Signup = require('../models/signup'); 
 const secretKey = process.env.JWT_SECRET;
+const mongoose = require('mongoose');
 
 module.exports = {
   Register: async (req, res) => {
     const formData = req.body;
-    console.log(formData, 'form data');
     if (
       !formData.name || 
       !formData.email || 
       !formData.number || 
       !formData.location || 
       !formData.age || 
-      !formData.time || 
       !formData.date || 
       !formData.slot
     ) {
@@ -23,6 +22,8 @@ module.exports = {
     try {
       const newFormData = new FormData(formData);
       await newFormData.save();
+      console.log('data saved');
+      
       const otp = Math.floor(1000 + Math.random() * 9000);
       console.log(`Generated OTP for ${formData.email}: ${otp}`);
       return res.status(200).json({ 
@@ -35,38 +36,86 @@ module.exports = {
       return res.status(500).json({ message: 'Internal server error while processing the form.' });
     }
   },
-  formData: async (req, res) => {
+  formData : async (req, res) => { 
     try {
-      // Extract the ID from the request parameters
       const { id } = req.params;
-      
-  console.log(id)
-      // Find the user/data by ID in your database
-      // This example assumes you're using Mongoose with MongoDB
-      const userData = await FormData.findById(id)
-      console.log(userData,'adfdfg')
+      console.log('ID received:', id);
   
-      // If no user is found, return a 404 error
-      if (!userData) {
-        return res.status(404).json({ 
-          message: 'User not found',
-          success: false 
+      // Validate ObjectId
+      if (!mongoose.Types.ObjectId.isValid(id)) {
+        return res.status(400).json({
+          message: 'Invalid ID format',
+          success: false,
         });
       }
   
-      res.status(200).json({
-        message: 'User data retrieved successfully',
-        success: true,
-        data: userData
-      });
+      const objectId = new mongoose.Types.ObjectId(id); // Fix: Use 'new' to instantiate the ObjectId
   
-    } catch (error) {
-      console.error('Error retrieving user data:', error);
-      res.status(500).json({ 
-        message: 'Error retrieving user data',
-        success: false,
-        error: error.message 
+      // Aggregation pipeline to join Signup and FormData collections
+      const result = await Signup.aggregate([
+        {
+          $match: { _id: objectId }, // Match the user by ID in Signup collection
+        },
+        {
+          $lookup: {
+            from: 'formdatas', // Ensure this is the actual collection name
+            localField: '_id',
+            foreignField: '_id',
+            as: 'formData',
+          },
+        },
+        {
+          $unwind: {
+            path: '$formData',
+            preserveNullAndEmptyArrays: true,
+          },
+        },
+        {
+          $addFields: {
+            emailsMatch: { $eq: ['$email', '$formData.email'] },
+          },
+        },
+      ]);
+  
+      if (!result || result.length === 0) {
+        return res.status(404).json({
+          message: 'User not found in Signup or FormData',
+          success: false,
+        });
+      }
+  
+      const userData = result[0];
+      console.log('Aggregation Result:', userData);
+  
+      const datagotted = userData.emailsMatch
+        ? {
+            message: 'Emails match',
+            formData: userData.formData,
+          }
+        : null;
+  
+      res.status(200).json({
+        message: 'Data processed successfully',
+        success: true,
+        userData: {
+          _id: userData._id,
+          name: userData.name,
+          email: userData.email,
+        },
+        formData: userData.formData || null,
+        
+        datagotted,
       });
+      console.log(userData,'assfs');
+      
+    } catch (error) {
+      console.error('Error processing data:', error);
+      res.status(500).json({
+        message: 'An unexpected error occurred while processing data',
+        success: false,
+        error: error.message,
+      });
+    }
   }
-
-}}
+  
+}
