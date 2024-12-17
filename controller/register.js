@@ -45,74 +45,24 @@ module.exports = {
   formData : async (req, res) => { 
     try {
       const { id } = req.params;
-      console.log('ID received:', id);
-  
-      // Validate ObjectId
+
       if (!mongoose.Types.ObjectId.isValid(id)) {
         return res.status(400).json({
           message: 'Invalid ID format',
           success: false,
         });
       }
-  
-      const objectId = new mongoose.Types.ObjectId(id); 
-        const result = await Signup.aggregate([
-        {
-          $match: { _id: objectId }, // Match the user by ID in Signup collection
-        },
-        {
-          $lookup: {
-            from: 'formdatas', // Ensure this is the actual collection name
-            localField: '_id',
-            foreignField: '_id',
-            as: 'formData',
-          },
-        },
-        {
-          $unwind: {
-            path: '$formData',
-            preserveNullAndEmptyArrays: true,
-          },
-        },
-        {
-          $addFields: {
-            emailsMatch: { $eq: ['$email', '$formData.email'] },
-          },
-        },
-      ]);
-  
-      if (!result || result.length === 0) {
-        return res.status(404).json({
-          message: 'User not found in Signup or FormData',
-          success: false,
-        });
-      }
-  
-      const userData = result[0];
-      console.log('Aggregation Result:', userData);
-  
-      const datagotted = userData.emailsMatch
-        ? {
-            message: 'Emails match',
-            formData: userData.formData,
-          }
-        : null;
-  
+
+      const objectId = new mongoose.Types.ObjectId(id);
+      const user = await Signup.findById(objectId).select("email")  
+      const formData = await FormData.findOne({email: user.email});
       res.status(200).json({
         message: 'Data processed successfully',
         success: true,
-        userData: {
-          _id: userData._id,
-          name: userData.name,
-          email: userData.email,
-        },
-        formData: userData.formData || null,
-        
-        datagotted,
+        formData,
       });
-      console.log(userData,'assfs');
-      
-    } catch (error) {
+    } 
+    catch (error) {
       console.error('Error processing data:', error);
       res.status(500).json({
         message: 'An unexpected error occurred while processing data',
