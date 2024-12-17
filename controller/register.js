@@ -7,35 +7,41 @@ const mongoose = require('mongoose');
 module.exports = {
   Register: async (req, res) => {
     const formData = req.body;
-    if (
-      !formData.name || 
-      !formData.email || 
-      !formData.number || 
-      !formData.location || 
-      !formData.age || 
-      !formData.date || 
-      !formData.slot
-    ) {
-      return res.status(400).json({ message: 'All fields are required.' });
-    }
-  
-    try {
-      const newFormData = new FormData(formData);
-      await newFormData.save();
-      console.log('data saved');
-      
-      const otp = Math.floor(1000 + Math.random() * 9000);
-      console.log(`Generated OTP for ${formData.email}: ${otp}`);
-      return res.status(200).json({ 
-        message: 'Form submitted successfully.', 
-        data: formData,
-        otp: otp, 
+  if (
+    !formData.name || 
+    !formData.email || 
+    !formData.number || 
+    !formData.location || 
+    !formData.age || 
+    !formData.date || 
+    !formData.slot
+  ) {
+    return res.status(400).json({ message: 'All fields are required.' });
+  }
+
+  try {
+    const existingUser = await Signup.findOne({ email: formData.email });
+    if (!existingUser) {
+      return res.status(403).json({
+        message: 'This email is not registered. Please use a signed-up email.',
       });
-    } catch (dbError) {
-      console.error('Error saving form data to MongoDB:', dbError);
-      return res.status(500).json({ message: 'Internal server error while processing the form.' });
     }
-  },
+    const newFormData = new FormData(formData); 
+    await newFormData.save();
+    console.log('Data saved successfully.');
+
+    const otp = Math.floor(100000 + Math.random() * 900000); // 6-digit OTP
+
+    return res.status(200).json({ 
+      message: 'Form submitted successfully.', 
+      data: formData,
+      otp: otp, 
+    });
+  } catch (dbError) {
+    console.error('Error saving form data to MongoDB:', dbError);
+    return res.status(500).json({ message: 'Internal server error while processing the form.' });
+  }
+},
   formData : async (req, res) => { 
     try {
       const { id } = req.params;
@@ -49,10 +55,8 @@ module.exports = {
         });
       }
   
-      const objectId = new mongoose.Types.ObjectId(id); // Fix: Use 'new' to instantiate the ObjectId
-  
-      // Aggregation pipeline to join Signup and FormData collections
-      const result = await Signup.aggregate([
+      const objectId = new mongoose.Types.ObjectId(id); 
+        const result = await Signup.aggregate([
         {
           $match: { _id: objectId }, // Match the user by ID in Signup collection
         },
