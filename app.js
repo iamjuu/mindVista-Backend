@@ -1,6 +1,13 @@
 const express = require('express');
 const cors = require('cors');
+<<<<<<< HEAD
 const path = require('path');
+=======
+const formRoutes = require('./router/registerRoute'); 
+const SignupRouter = require('./router/signupRouter')
+const LoginRouter = require('./router/loginRouter')
+const DashboardRouter = require('./router/DashboardRouter')
+>>>>>>> 4e60bb9 ( dashboard set)
 const bodyParser = require('body-parser');
 const http = require('http');
 const { WebSocketServer } = require('ws');
@@ -10,6 +17,7 @@ const DatabaseConnection = require('./config/databaseConnection');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+<<<<<<< HEAD
 
 // ----------------- MIDDLEWARE -----------------
 app.use(cors({ 
@@ -195,6 +203,23 @@ wss.on('connection', (ws, req) => {
   ws.on('error', (err) => {
     console.error(`❌ WebSocket error for ${userId}:`, err);
   });
+=======
+const DatabaseConnetion = require('./config/databaseConnection')
+DatabaseConnetion()
+const corsOptions = {
+  origin: 'http://localhost:5173', 
+  methods: ['GET', 'POST'],
+  allowedHeaders: ['Content-Type'],
+};
+app.use(cors(corsOptions))
+app.use(bodyParser.json())
+app.use('/', formRoutes);
+app.use('/',SignupRouter)
+app.use('/',LoginRouter)
+app.use('/',DashboardRouter)
+app.listen(PORT, () => {
+  console.log(`Server running on http://localhost:${PORT}`);
+>>>>>>> 4e60bb9 ( dashboard set)
 });
 
 // Health check endpoint
