@@ -3,6 +3,8 @@ const cors = require('cors');
 const formRoutes = require('./router/registerRoute'); 
 const SignupRouter = require('./router/signupRouter')
 const LoginRouter = require('./router/loginRouter')
+const NotificationRouter = require('./router/notification')
+const ProfileRouter = require('./router/profle')
 const bodyParser = require('body-parser');
 require('dotenv').config();  // Make sure to load environment variables
 
@@ -20,6 +22,8 @@ app.use(bodyParser.json())
 app.use('/', formRoutes);
 app.use('/',SignupRouter)
 app.use('/',LoginRouter)
+app.use('/',NotificationRouter)
+app.use('/',ProfileRouter)
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
 });
