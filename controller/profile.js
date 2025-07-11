@@ -1,4 +1,4 @@
-const Register = require('../models/register');
+const Appointment = require('../models/appoiment');
 
 module.exports={
 
@@ -11,7 +11,7 @@ module.exports={
                 console.log('[profileGet] No email provided');
                 return res.status(400).json({ message: 'Email (lemail) is required.' });
             }
-            const user = await Register.findOne({ email });
+            const user = await Appointment.findOne({ email });
             if (!user) {
                 console.log('[profileGet] No user found for email:', email);
                 return res.status(404).json({ message: 'User not found.' });
@@ -39,7 +39,7 @@ module.exports={
         try {
             const { name, age, designation, location, image, phone, email } = req.body;
             console.log('[profileUpdate] Update request for email:', email);
-            if (email) {
+            if (!email) {
                 console.log('[profileUpdate] No email provided');
                 return res.status(400).json({ message: 'Email (lemail) is required.' });
             }
@@ -52,7 +52,7 @@ module.exports={
             // Only add fields if provided
             if (designation !== undefined) updateFields.designation = designation;
             if (image !== undefined) updateFields.image = image;
-            const updatedUser = await Register.findOneAndUpdate(
+            const updatedUser = await Appointment.findOneAndUpdate(
                 { email: email },
                 { $set: updateFields },
                 { new: true }
