@@ -2,6 +2,25 @@ const Doctor = require('../models/doctor');
 
 module.exports = {
     
+    // Test function
+    test: async (req, res) => {
+        try {
+            console.log('[test] Test endpoint called');
+            return res.status(200).json({ 
+                success: true, 
+                message: 'Doctor controller is working!',
+                timestamp: new Date().toISOString()
+            });
+        } catch (error) {
+            console.error('[test] Error:', error);
+            return res.status(500).json({ 
+                success: false, 
+                message: 'Error in test endpoint', 
+                error: error.message 
+            });
+        }
+    },
+    
     // Get all doctors
     getAllDoctors: async (req, res) => {
         try {
@@ -56,85 +75,138 @@ module.exports = {
     // Create new doctor
     createDoctor: async (req, res) => {
         try {
-            console.log('[createDoctor] Function called - Starting doctor creation process');
+            console.log('[createDoctor] ===== START =====');
+            console.log('[createDoctor] Request body:', req.body);
+            console.log('[createDoctor] Request file:', req.file);
+            console.log('[createDoctor] Request headers:', req.headers);
+            console.log('[createDoctor] Content-Type:', req.headers['content-type']);
+            
             const { name, email, specialization, phone, experience, patients, rating, available } = req.body;
-            console.log('[createDoctor] Creating new doctor with data:', { 
-                name, email, specialization, phone, experience, patients, rating, available 
-            });
+            
+            console.log('[createDoctor] Extracted fields:');
+            console.log('  - name:', name, typeof name);
+            console.log('  - email:', email, typeof email);
+            console.log('  - specialization:', specialization, typeof specialization);
+            console.log('  - phone:', phone, typeof phone);
+            console.log('  - experience:', experience, typeof experience);
+            console.log('  - patients:', patients, typeof patients);
+            console.log('  - rating:', rating, typeof rating);
+            console.log('  - available:', available, typeof available);
             
             // Validate required fields
-            console.log('[createDoctor] Validating required fields');
             if (!name || !specialization || !phone || !experience) {
-                console.log('[createDoctor] Validation failed - Missing required fields');
-                return res.status(400).json({ 
-                    success: false, 
-                    message: 'Missing required fields: name, specialization, phone, experience' 
+                console.log('[createDoctor] Missing required fields');
+                return res.status(400).json({
+                    success: false,
+                    message: 'Missing required fields: name, specialization, phone, and experience are required'
                 });
             }
-            console.log('[createDoctor] Required fields validation passed');
             
-            // Check if doctor with same phone already exists
-            console.log('[createDoctor] Checking for duplicate phone number:', phone);
-            const existingDoctor = await Doctor.findOne({ phone: phone });
-            if (existingDoctor) {
-                console.log('[createDoctor] Duplicate check failed - Doctor with phone already exists:', phone);
-                return res.status(400).json({ 
-                    success: false, 
-                    message: 'Doctor with this phone number already exists' 
+            // Validate phone number format
+            if (!/^\d{10}$/.test(phone)) {
+                console.log('[createDoctor] Invalid phone number format:', phone);
+                return res.status(400).json({
+                    success: false,
+                    message: 'Phone number must be exactly 10 digits'
                 });
             }
-            console.log('[createDoctor] Duplicate check passed - Phone number is unique');
             
-            // Check if email is provided and if it already exists
+            // Validate experience
+            if (isNaN(experience) || parseInt(experience) < 0) {
+                console.log('[createDoctor] Invalid experience:', experience);
+                return res.status(400).json({
+                    success: false,
+                    message: 'Experience must be a positive number'
+                });
+            }
+            
+            // Check if phone number already exists
+            const existingPhone = await Doctor.findOne({ phone: phone });
+            if (existingPhone) {
+                console.log('[createDoctor] Phone number already exists:', phone);
+                return res.status(400).json({
+                    success: false,
+                    message: 'Phone number already exists for another doctor'
+                });
+            }
+            
+            // Check if email already exists (only if email is provided)
             if (email) {
-                console.log('[createDoctor] Checking for duplicate email:', email);
-                const existingEmailDoctor = await Doctor.findOne({ email: email });
-                if (existingEmailDoctor) {
-                    console.log('[createDoctor] Duplicate check failed - Doctor with email already exists:', email);
-                    return res.status(400).json({ 
-                        success: false, 
-                        message: 'Doctor with this email already exists' 
+                const existingEmail = await Doctor.findOne({ email: email });
+                if (existingEmail) {
+                    console.log('[createDoctor] Email already exists:', email);
+                    return res.status(400).json({
+                        success: false,
+                        message: 'Email already exists for another doctor'
                     });
                 }
-                console.log('[createDoctor] Email duplicate check passed - Email is unique');
+            }
+            
+            // Check if image was uploaded
+            if (!req.file) {
+                console.log('[createDoctor] No image file received');
+                return res.status(400).json({
+                    success: false,
+                    message: 'Profile image is required'
+                });
             }
             
             // Create doctor data object
-            console.log('[createDoctor] Building doctor data object');
             const doctorData = {
-                name,
-                specialization,
-                phone,
+                name: name.trim(),
+                specialization: specialization.trim(),
+                phone: phone.trim(),
                 experience: parseInt(experience),
-                patients: patients ? parseInt(patients) : 0,
-                rating: rating ? parseFloat(rating) : 0,
-                available: available !== undefined ? available : true
+                available: available === 'true' || available === true,
+                profilePicture: req.file.path // Store the file path
             };
             
-            // Add email to doctorData only if it's provided
-            if (email) {
-                doctorData.email = email;
+            // Add optional fields if provided
+            if (email) doctorData.email = email.trim().toLowerCase();
+            if (patients !== undefined && patients !== '') doctorData.patients = parseInt(patients);
+            if (rating !== undefined && rating !== '') doctorData.rating = parseFloat(rating);
+            
+            console.log('[createDoctor] Final doctor data to save:', doctorData);
+            
+            // Create new doctor
+            const newDoctor = new Doctor(doctorData);
+            const savedDoctor = await newDoctor.save();
+            
+            console.log('[createDoctor] Doctor created successfully:', savedDoctor.name);
+            console.log('[createDoctor] ===== END =====');
+            
+            return res.status(201).json({
+                success: true,
+                message: 'Doctor created successfully',
+                doctor: savedDoctor
+            });
+            
+        } catch (error) {
+            console.error('[createDoctor] Error:', error);
+            
+            // Handle validation errors
+            if (error.name === 'ValidationError') {
+                const validationErrors = Object.values(error.errors).map(err => err.message);
+                return res.status(400).json({
+                    success: false,
+                    message: 'Validation error',
+                    errors: validationErrors
+                });
             }
             
-            console.log('[createDoctor] Doctor data object created:', doctorData);
+            // Handle duplicate key errors
+            if (error.code === 11000) {
+                const field = Object.keys(error.keyValue)[0];
+                return res.status(400).json({
+                    success: false,
+                    message: `${field.charAt(0).toUpperCase() + field.slice(1)} already exists`
+                });
+            }
             
-            console.log('[createDoctor] Saving doctor to database');
-            const newDoctor = new Doctor(doctorData);
-            await newDoctor.save();
-            
-            console.log('[createDoctor] Doctor created successfully with ID:', newDoctor._id);
-            console.log('[createDoctor] Returning success response');
-            return res.status(201).json({ 
-                success: true, 
-                message: 'Doctor created successfully', 
-                doctor: newDoctor 
-            });
-        } catch (error) {
-            console.error('[createDoctor] Error occurred during doctor creation:', error);
-            return res.status(500).json({ 
-                success: false, 
-                message: 'Error creating doctor', 
-                error: error.message 
+            return res.status(500).json({
+                success: false,
+                message: 'Error creating doctor',
+                error: error.message
             });
         }
     },

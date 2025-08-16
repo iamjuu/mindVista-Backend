@@ -5,19 +5,25 @@ const DoctorSchema = new mongoose.Schema({
   name: {
     type: String,
     required: true,
+    trim: true
   },
   email: {
     type: String,
     unique: true,
     sparse: true, // This allows multiple null values while maintaining uniqueness for non-null values
+    trim: true,
+    lowercase: true
   },
   phone: {
     type: String,
     required: true,
+    unique: true,
+    trim: true
   },
   specialization: {
     type: String,
     required: true,
+    trim: true
   },
   
   // Professional details
@@ -25,6 +31,7 @@ const DoctorSchema = new mongoose.Schema({
   experience: {
     type: Number,
     required: true,
+    min: 0
   }, // years of experience
   designation: String,
   department: String,
@@ -33,23 +40,27 @@ const DoctorSchema = new mongoose.Schema({
   patients: {
     type: Number,
     default: 0,
+    min: 0
   }, // number of patients treated
   rating: {
     type: Number,
     min: 0,
     max: 5,
-    default: 0,
+    default: 0
   }, // doctor rating
   available: {
     type: Boolean,
-    default: true,
+    default: true
   }, // availability status
   
   // Personal details
   age: Number,
   gender: String,
   address: String,
-  profilePicture: String,
+  profilePicture: {
+    type: String,
+    default: null
+  }, // Store the image file path
   bio: String,
   
   // Professional settings
@@ -82,6 +93,11 @@ DoctorSchema.pre('save', function(next) {
   this.updatedAt = Date.now();
   next();
 });
+
+// Index for better query performance
+DoctorSchema.index({ specialization: 1, available: 1 });
+DoctorSchema.index({ phone: 1 });
+DoctorSchema.index({ email: 1 });
 
 const Doctor = mongoose.model('Doctor', DoctorSchema);
 

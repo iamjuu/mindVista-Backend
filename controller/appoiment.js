@@ -4,14 +4,8 @@ module.exports = {
     // Get all appointments
     getAppointments: async (req, res) => {
         try {
-            console.log('Fetching all appointments...');
-            
             // Remove populate since we don't have a register model
             const appointments = await Appoinment.find();
-            console.log('====================================');
-            console.log(appointments, 'fetched appointments');
-            console.log('====================================');
-            
             // Transform the data to match frontend expectations (add id field)
             const transformedAppointments = appointments.map(appointment => ({
                 id: appointment._id,
@@ -48,31 +42,19 @@ module.exports = {
     // Create a new appointment
     createAppointment: async (req, res) => {
         try {
-            console.log('Creating new appointment...');
+
             console.log('Request body:', req.body);
             
             const { name, email, number, age, location, slot, time, date } = req.body;
-            
-            // Validate required fields
+            console.log('heloo');
             if (!name || !number || !age || !location || !time || !date) {
-                console.log('Missing required fields');
+  
                 return res.status(400).json({
                     success: false,
                     message: 'All fields are required'
                 });
             }
-            
-            console.log('Creating appointment with data:', {
-                name,
-                email,
-                phone: number,
-                age,
-                location,
-                slot,
-                time,
-                date
-            });
-            
+      
             const newAppointment = new Appoinment({
                 name,
                 phone: number, // Map number to phone field
@@ -86,7 +68,6 @@ module.exports = {
             });
             
             await newAppointment.save();
-            console.log('Appointment created successfully:', newAppointment);
             
             // Transform the data to match frontend expectations
             const transformedAppointment = {
@@ -123,7 +104,6 @@ module.exports = {
     approveAppointment: async (req, res) => {
         try {
             const { id } = req.params;
-            console.log(`Approving appointment with ID: ${id}`);
             
             const appointment = await Appoinment.findByIdAndUpdate(
                 id,
@@ -132,15 +112,11 @@ module.exports = {
             );
             
             if (!appointment) {
-                console.log(`Appointment with ID ${id} not found`);
                 return res.status(404).json({
                     success: false,
                     message: 'Appointment not found'
                 });
             }
-            
-            console.log('Appointment approved successfully:', appointment);
-            
             // Transform the data to match frontend expectations
             const transformedAppointment = {
                 id: appointment._id,
@@ -176,7 +152,6 @@ module.exports = {
     declineAppointment: async (req, res) => {
         try {
             const { id } = req.params;
-            console.log(`Declining appointment with ID: ${id}`);
             
             const appointment = await Appoinment.findByIdAndUpdate(
                 id,
@@ -185,15 +160,11 @@ module.exports = {
             );
             
             if (!appointment) {
-                console.log(`Appointment with ID ${id} not found`);
                 return res.status(404).json({
                     success: false,
                     message: 'Appointment not found'
                 });
-            }
-            
-            console.log('Appointment declined successfully:', appointment);
-            
+            }            
             // Transform the data to match frontend expectations
             const transformedAppointment = {
                 id: appointment._id,
