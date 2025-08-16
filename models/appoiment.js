@@ -18,7 +18,8 @@ const appoinmentSchema = new mongoose.Schema({
         required: true
     },
     doctor: {
-        type: String,
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'doctor',
         required: true
     },
     status: {

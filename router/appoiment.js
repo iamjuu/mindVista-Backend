@@ -6,6 +6,9 @@ const AppointmentController = require('../controller/appoiment');
 // Get all appointments
 router.get('/appointment', AppointmentController.getAppointments)
 
+// Get patient requests (request-pateint endpoint)
+router.get('/request-pateint', AppointmentController.getPatientRequests)
+
 // Create a new appointment
 router.post('/appointment', AppointmentController.createAppointment)
 

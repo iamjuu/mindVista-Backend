@@ -51,10 +51,10 @@ module.exports = {
     // Create new doctor
     createDoctor: async (req, res) => {
         try {
-            const { name, email, specialization, phone, experience, patients, rating, available } = req.body;
+            const { name, email, specialization, phone, experience, patients, rating, available, qualification, designation, department, age, gender, address, bio, consultationFee } = req.body;
             
             // Validate required fields
-            if (!name || !specialization || !phone || !experience) {
+            if (!name || !specialization || !phone || !experience ) {
                 return res.status(400).json({
                     success: false,
                     message: 'Missing required fields: name, specialization, phone, and experience are required'
@@ -97,6 +97,12 @@ module.exports = {
                 }
             }
             
+            // Generate a default password for new doctors (they can change it later)
+            const defaultPassword = 'doctor123'; // You might want to generate a random password
+            const bcrypt = require('bcryptjs');
+            const saltRounds = 10;
+            const hashedPassword = await bcrypt.hash(defaultPassword, saltRounds);
+            
             // Check if image was uploaded
             if (!req.file) {
                 return res.status(400).json({
@@ -112,11 +118,23 @@ module.exports = {
                 phone: phone.trim(),
                 experience: parseInt(experience),
                 available: available === 'true' || available === true,
-                profilePicture: req.file.path // Store the file path
+                password: hashedPassword,
+                profilePicture: req.file.path, // Store the file path
+                isActive: false, // New doctors are inactive by default
+                patients: 0,
+                rating: 0
             };
             
             // Add optional fields if provided
             if (email) doctorData.email = email.trim().toLowerCase();
+            if (qualification) doctorData.qualification = qualification.trim();
+            if (designation) doctorData.designation = designation.trim();
+            if (department) doctorData.department = department.trim();
+            if (age) doctorData.age = parseInt(age);
+            if (gender) doctorData.gender = gender;
+            if (address) doctorData.address = address.trim();
+            if (bio) doctorData.bio = bio.trim();
+            if (consultationFee) doctorData.consultationFee = parseFloat(consultationFee);
             if (patients !== undefined && patients !== '') doctorData.patients = parseInt(patients);
             if (rating !== undefined && rating !== '') doctorData.rating = parseFloat(rating);
             
@@ -155,6 +173,87 @@ module.exports = {
             return res.status(500).json({
                 success: false,
                 message: 'Error creating doctor',
+                error: error.message
+            });
+        }
+    },
+
+    // Doctor login
+    loginDoctor: async (req, res) => {
+        try {
+            const { email, password } = req.body;
+            
+
+            // Validate required fields
+            if (!email || !password) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Email and phone number (password) are required'
+                });
+            }
+            
+            // Find doctor by email
+            const doctor = await Doctor.findOne({ email: email.toLowerCase() });
+            if (!doctor) {
+                return res.status(401).json({
+                    success: false,
+                    message: 'Invalid email or phone number. Please check your credentials.'
+                });
+            }
+            
+            // Check if doctor is approved
+            if (!doctor.isActive) {
+                return res.status(401).json({
+                    success: false,
+                    message: 'Please contact administration to approve your account before logging in.'
+                });
+            }
+            
+            // Verify phone number (password) - direct comparison since phone is the password
+            if (doctor.phone !== password) {
+                return res.status(401).json({
+                    success: false,
+                    message: 'Invalid email or phone number. Please check your credentials.'
+                });
+            }
+            
+            // Create response object (exclude password)
+            const doctorResponse = {
+                _id: doctor._id,
+                name: doctor.name,
+                email: doctor.email,
+                specialization: doctor.specialization,
+                phone: doctor.phone,
+                experience: doctor.experience,
+                patients: doctor.patients,
+                rating: doctor.rating,
+                available: doctor.available,
+                profilePicture: doctor.profilePicture,
+                qualification: doctor.qualification,
+                designation: doctor.designation,
+                department: doctor.department,
+                age: doctor.age,
+                gender: doctor.gender,
+                address: doctor.address,
+                bio: doctor.bio,
+                consultationFee: doctor.consultationFee,
+                availableSlots: doctor.availableSlots,
+                isActive: doctor.isActive,
+                createdAt: doctor.createdAt,
+                updatedAt: doctor.updatedAt
+            };
+            
+            return res.status(200).json({
+                success: true,
+                message: 'Login successful',
+                doctor: doctorResponse
+            });
+            
+        } catch (error) {
+            console.error('[loginDoctor] Error:', error);
+            return res.status(500).json({
+                success: false,
+                message: 'Error during login',
                 error: error.message
             });
         }
@@ -286,10 +385,10 @@ module.exports = {
         }
     },
 
-    // Get all doctors for admin (including unavailable)
+    // Get all doctors for admin (including unavailable and pending approval)
     getAllDoctorsAdmin: async (req, res) => {
         try {
-            const doctors = await Doctor.find({ isActive: true });
+            const doctors = await Doctor.find({}); // Get all doctors regardless of status
             return res.status(200).json({ 
                 success: true, 
                 count: doctors.length, 
@@ -300,6 +399,61 @@ module.exports = {
             return res.status(500).json({ 
                 success: false, 
                 message: 'Error fetching doctors for admin', 
+                error: error.message 
+            });
+        }
+    },
+
+    // Get all doctors for registration form (all-docters endpoint)
+    getAllDoctorsForForm: async (req, res) => {
+        try {
+            const doctors = await Doctor.find({ isActive: true, available: true })
+                .select('name specialization experience rating')
+                .sort({ name: 1 });
+            
+            return res.status(200).json({ 
+                success: true, 
+                count: doctors.length, 
+                data: doctors 
+            });
+        } catch (error) {
+            console.error('[getAllDoctorsForForm] Error:', error);
+            return res.status(500).json({ 
+                success: false, 
+                message: 'Error fetching doctors for form', 
+                error: error.message 
+            });
+        }
+    },
+
+    // Approve doctor
+    approveDoctor: async (req, res) => {
+        try {
+            const { id } = req.params;
+            
+            const updatedDoctor = await Doctor.findByIdAndUpdate(
+                id,
+                { $set: { isActive: true, updatedAt: Date.now() } },
+                { new: true }
+            );
+            
+            if (!updatedDoctor) {
+                return res.status(404).json({ 
+                    success: false, 
+                    message: 'Doctor not found' 
+                });
+            }
+            
+            return res.status(200).json({ 
+                success: true, 
+                message: 'Doctor approved successfully',
+                doctor: updatedDoctor
+            });
+        } catch (error) {
+            console.error('[approveDoctor] Error:', error);
+            return res.status(500).json({ 
+                success: false, 
+                message: 'Error approving doctor', 
                 error: error.message 
             });
         }

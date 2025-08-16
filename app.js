@@ -1,6 +1,5 @@
 const express = require('express');
 const cors = require('cors');
-const multer = require('multer');
 const path = require('path');
 const NotificationRouter = require('./router/notification')
 const ProfileRouter = require('./router/profle')
@@ -14,8 +13,7 @@ const PORT = process.env.PORT || 3000;
 const DatabaseConnetion = require('./config/databaseConnection')
 DatabaseConnetion()
 
-// Configure multer for file uploads
-const upload = multer({ dest: 'uploads/' });
+// Multer configuration is handled in individual routers
 
 const corsOptions = {
   origin: 'http://localhost:5173', 

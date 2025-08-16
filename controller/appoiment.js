@@ -39,19 +39,61 @@ module.exports = {
         }
     },
 
+    // Get patient requests (request-pateint endpoint)
+    getPatientRequests: async (req, res) => {
+        try {
+            // Get all patient requests/appointments with doctor information
+            const patientRequests = await Appoinment.find().populate('doctor', 'name specialization experience rating');
+            
+            // Transform the data to match frontend expectations
+            const transformedRequests = patientRequests.map(request => ({
+                id: request._id,
+                _id: request._id,
+                name: request.name,
+                phone: request.phone,
+                number: request.phone, // Alternative field name
+                age: request.age,
+                location: request.location,
+                doctor: request.doctor,
+                doctorName: request.doctor?.name || request.doctor || 'N/A',
+                doctorSpecialization: request.doctor?.specialization || 'N/A',
+                status: request.status || 'pending',
+                time: request.time,
+                date: request.date,
+                createdAt: request.createdAt,
+                updatedAt: request.updatedAt
+            }));
+            
+            console.log('Patient requests fetched:', transformedRequests);
+            
+            res.status(200).json({
+                success: true,
+                data: transformedRequests,
+                message: 'Patient requests fetched successfully'
+            });
+        } catch (error) {
+            console.error('Error fetching patient requests:', error);
+            res.status(500).json({
+                success: false,
+                message: 'Failed to fetch patient requests',
+                error: error.message
+            });
+        }
+    },
+
     // Create a new appointment
     createAppointment: async (req, res) => {
         try {
 
             console.log('Request body:', req.body);
             
-            const { name, email, number, age, location, slot, time, date } = req.body;
+            const { name, email, number, age, location, slot, time, date, doctor } = req.body;
             console.log('heloo');
-            if (!name || !number || !age || !location || !time || !date) {
+            if (!name || !number || !age || !location || !time || !date || !doctor) {
   
                 return res.status(400).json({
                     success: false,
-                    message: 'All fields are required'
+                    message: 'All fields are required including doctor selection'
                 });
             }
       
@@ -60,7 +102,7 @@ module.exports = {
                 phone: number, // Map number to phone field
                 age,
                 location,
-                doctor: 'General Doctor', // Default doctor since not provided in form
+                doctor: doctor, // Use the selected doctor from form
                 time,
                 date,
                 register: null, // Set to null for now since no user registration system

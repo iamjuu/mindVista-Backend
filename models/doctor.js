@@ -71,10 +71,17 @@ const DoctorSchema = new mongoose.Schema({
     endTime: String,
   }],
   
+  // Authentication
+  password: {
+    type: String,
+    required: true,
+    trim: true
+  },
+  
   // Status
   isActive: {
     type: Boolean,
-    default: true,
+    default: false,
   },
   
   // Timestamps
