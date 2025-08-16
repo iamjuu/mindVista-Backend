@@ -90,10 +90,10 @@ router.get('/doctors/:id', DoctorController.getDoctorById);
 
 
 // Update a doctor
-router.put('/doctors/:id', DoctorController.updateDoctor);
+router.put('/doctor-update/:id', DoctorController.updateDoctor);
 
 // Delete a doctor (soft delete)
-router.delete('/doctors/:id', DoctorController.deleteDoctor);
+router.delete('/doctor-delete/:id', DoctorController.deleteDoctor);
 
 // Get doctors by specialization
 router.get('/doctors/specialization/:specialization', DoctorController.getDoctorsBySpecialization);
