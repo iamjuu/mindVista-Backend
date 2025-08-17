@@ -1,0 +1,259 @@
+const nodemailer = require('nodemailer');
+
+// Create transporter for nodemailer
+const createTransporter = () => {
+    // Check if environment variables are set
+    if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+        throw new Error('Email configuration missing. Please set EMAIL_USER and EMAIL_PASS in your .env file');
+    }
+    
+    return nodemailer.createTransport({
+        service: 'gmail',
+        auth: {
+            user: process.env.EMAIL_USER,
+            pass: process.env.EMAIL_PASS
+        }
+    });
+};
+
+// Send email notification when appointment is approved
+const sendApprovalEmail = async (patientEmail, patientName, doctorName, appointmentDate, appointmentTime) => {
+    try {
+        const transporter = createTransporter();
+
+        const mailOptions = {
+            from: process.env.EMAIL_USER,
+            to: patientEmail,
+            subject: 'Appointment Approved - MindVista Psychology',
+            html: `
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f8f9fa;">
+                    <div style="background-color: #ffffff; padding: 30px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+                        <div style="text-align: center; margin-bottom: 30px;">
+                            <h1 style="color: #2563eb; margin: 0; font-size: 28px;">🎉 Appointment Approved!</h1>
+                            <p style="color: #6b7280; margin: 10px 0 0 0; font-size: 16px;">Your appointment has been confirmed</p>
+                        </div>
+                        
+                        <div style="background-color: #f0f9ff; padding: 20px; border-radius: 8px; border-left: 4px solid #2563eb; margin-bottom: 25px;">
+                            <h2 style="color: #1e40af; margin: 0 0 15px 0; font-size: 20px;">Appointment Details</h2>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                                <div>
+                                    <strong style="color: #374151;">Patient Name:</strong><br>
+                                    <span style="color: #6b7280;">${patientName}</span>
+                                </div>
+                                <div>
+                                    <strong style="color: #374151;">Doctor:</strong><br>
+                                    <span style="color: #6b7280;">${doctorName}</span>
+                                </div>
+                                <div>
+                                    <strong style="color: #374151;">Date:</strong><br>
+                                    <span style="color: #6b7280;">${appointmentDate}</span>
+                                </div>
+                                <div>
+                                    <strong style="color: #374151;">Time:</strong><br>
+                                    <span style="color: #6b7280;">${appointmentTime}</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div style="background-color: #fef3c7; padding: 20px; border-radius: 8px; border-left: 4px solid #f59e0b; margin-bottom: 25px;">
+                            <h3 style="color: #92400e; margin: 0 0 15px 0; font-size: 18px;">📋 Important Information</h3>
+                            <ul style="color: #78350f; margin: 0; padding-left: 20px;">
+                                <li>Please arrive 10 minutes before your scheduled time</li>
+                                <li>Bring any relevant medical documents or reports</li>
+                                <li>If you need to reschedule, please contact us at least 24 hours in advance</li>
+                                <li>For any questions, reach out to our support team</li>
+                            </ul>
+                        </div>
+                        
+                        <div style="text-align: center; margin-top: 30px;">
+                            <p style="color: #6b7280; margin: 0; font-size: 14px;">
+                                Thank you for choosing MindVista Psychology.<br>
+                                We look forward to helping you on your mental health journey.
+                            </p>
+                        </div>
+                        
+                        <div style="text-align: center; margin-top: 20px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
+                            <p style="color: #9ca3af; margin: 0; font-size: 12px;">
+                                This is an automated email. Please do not reply to this message.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            `
+        };
+
+        const info = await transporter.sendMail(mailOptions);
+        console.log('✅ Approval email sent successfully to:', patientEmail);
+        console.log('📧 Message ID:', info.messageId);
+        console.log('👤 Patient:', patientName);
+        console.log('👨‍⚕️ Doctor:', doctorName);
+        console.log('📅 Date:', appointmentDate);
+        console.log('⏰ Time:', appointmentTime);
+        return { success: true, messageId: info.messageId };
+    } catch (error) {
+        console.error('❌ Error sending approval email to:', patientEmail);
+        console.error('Error details:', error.message);
+        return { success: false, error: error.message };
+    }
+};
+
+// Send email notification when appointment is declined
+const sendDeclineEmail = async (patientEmail, patientName, doctorName, appointmentDate, appointmentTime, reason) => {
+    try {
+        const transporter = createTransporter();
+
+        const mailOptions = {
+            from: process.env.EMAIL_USER,
+            to: patientEmail,
+            subject: 'Appointment Update - MindVista Psychology',
+            html: `
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f8f9fa;">
+                    <div style="background-color: #ffffff; padding: 30px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+                        <div style="text-align: center; margin-bottom: 30px;">
+                            <h1 style="color: #dc2626; margin: 0; font-size: 28px;">📅 Appointment Update</h1>
+                            <p style="color: #6b7280; margin: 10px 0 0 0; font-size: 16px;">Your appointment request has been reviewed</p>
+                        </div>
+                        
+                        <div style="background-color: #fef2f2; padding: 20px; border-radius: 8px; border-left: 4px solid #dc2626; margin-bottom: 25px;">
+                            <h2 style="color: #991b1b; margin: 0 0 15px 0; font-size: 20px;">Appointment Details</h2>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                                <div>
+                                    <strong style="color: #374151;">Patient Name:</strong><br>
+                                    <span style="color: #6b7280;">${patientName}</span>
+                                </div>
+                                <div>
+                                    <strong style="color: #374151;">Doctor:</strong><br>
+                                    <span style="color: #6b7280;">${doctorName}</span>
+                                </div>
+                                <div>
+                                    <strong style="color: #374151;">Date:</strong><br>
+                                    <span style="color: #6b7280;">${appointmentDate}</span>
+                                </div>
+                                <div>
+                                    <strong style="color: #374151;">Time:</strong><br>
+                                    <span style="color: #6b7280;">${appointmentTime}</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div style="background-color: #fef3c7; padding: 20px; border-radius: 8px; border-left: 4px solid #f59e0b; margin-bottom: 25px;">
+                            <h3 style="color: #92400e; margin: 0 0 15px 0; font-size: 18px;">ℹ️ Status Update</h3>
+                            <p style="color: #78350f; margin: 0; line-height: 1.6;">
+                                Unfortunately, your appointment request for the above date and time cannot be accommodated at this moment. 
+                                ${reason ? `Reason: ${reason}` : ''}
+                            </p>
+                            <p style="color: #78350f; margin: 15px 0 0 0; line-height: 1.6;">
+                                We encourage you to try booking an alternative time slot or contact our support team for assistance.
+                            </p>
+                        </div>
+                        
+                        <div style="text-align: center; margin-top: 30px;">
+                            <p style="color: #6b7280; margin: 0; font-size: 14px;">
+                                We apologize for any inconvenience caused.<br>
+                                Thank you for your understanding.
+                            </p>
+                        </div>
+                        
+                        <div style="text-align: center; margin-top: 20px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
+                            <p style="color: #9ca3af; margin: 0; font-size: 12px;">
+                                This is an automated email. Please do not reply to this message.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            `
+        };
+
+        const info = await transporter.sendMail(mailOptions);
+        console.log('✅ Decline email sent successfully to:', patientEmail);
+        console.log('📧 Message ID:', info.messageId);
+        console.log('👤 Patient:', patientName);
+        console.log('👨‍⚕️ Doctor:', doctorName);
+        console.log('📅 Date:', appointmentDate);
+        console.log('⏰ Time:', appointmentTime);
+        if (reason) console.log('📝 Reason:', reason);
+        return { success: true, messageId: info.messageId };
+    } catch (error) {
+        console.error('❌ Error sending decline email to:', patientEmail);
+        console.error('Error details:', error.message);
+        return { success: false, error: error.message };
+    }
+};
+
+// Send doctor approval email
+const sendDoctorApprovalEmail = async (doctorEmail, doctorName) => {
+    try {
+        const transporter = createTransporter();
+console.log(process.env.EMAIL_PASS,'data gotted')
+
+        const mailOptions = {
+    
+            from: process.env.EMAIL_USER,
+            to: doctorEmail,
+            subject: 'Doctor Account Approved - MindVista Psychology',
+            html: `
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f8f9fa;">
+                    <div style="background-color: #ffffff; padding: 30px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+                        <div style="text-align: center; margin-bottom: 30px;">
+                            <h1 style="color: #059669; margin: 0; font-size: 28px;">🎉 Account Approved!</h1>
+                            <p style="color: #6b7280; margin: 10px 0 0 0; font-size: 16px;">Welcome to MindVista Psychology</p>
+                        </div>
+                        
+                        <div style="background-color: #ecfdf5; padding: 20px; border-radius: 8px; border-left: 4px solid #059669; margin-bottom: 25px;">
+                            <h2 style="color: #047857; margin: 0 0 15px 0; font-size: 20px;">Congratulations Dr. ${doctorName}!</h2>
+                            <p style="color: #065f46; margin: 0; line-height: 1.6;">
+                                Your doctor account has been successfully approved and activated. You can now:
+                            </p>
+                            <ul style="color: #065f46; margin: 15px 0 0 0; padding-left: 20px;">
+                                <li>Receive appointment requests from patients</li>
+                                <li>Manage your schedule and availability</li>
+                                <li>Access patient information and medical records</li>
+                                <li>Use all platform features</li>
+                            </ul>
+                        </div>
+                        
+                        <div style="background-color: #fef3c7; padding: 20px; border-radius: 8px; border-left: 4px solid #f59e0b; margin-bottom: 25px;">
+                            <h3 style="color: #92400e; margin: 0 0 15px 0; font-size: 18px;">📋 Next Steps</h3>
+                            <ul style="color: #78350f; margin: 0; padding-left: 20px;">
+                                <li>Complete your profile with additional information</li>
+                                <li>Set your availability and working hours</li>
+                                <li>Review and respond to appointment requests</li>
+                                <li>Familiarize yourself with the platform</li>
+                            </ul>
+                        </div>
+                        
+                        <div style="text-align: center; margin-top: 30px;">
+                            <p style="color: #6b7280; margin: 0; font-size: 14px;">
+                                Welcome to our team! We're excited to have you join MindVista Psychology.<br>
+                                If you have any questions, please don't hesitate to contact our support team.
+                            </p>
+                        </div>
+                        
+                        <div style="text-align: center; margin-top: 20px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
+                            <p style="color: #9ca3af; margin: 0; font-size: 12px;">
+                                This is an automated email. Please do not reply to this message.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            `
+        };
+
+        const info = await transporter.sendMail(mailOptions);
+        console.log('✅ Doctor approval email sent successfully to:', doctorEmail);
+        console.log('📧 Message ID:', info.messageId);
+        console.log('👨‍⚕️ Doctor:', doctorName);
+        console.log('🎉 Welcome email sent for account activation');
+        return { success: true, messageId: info.messageId };
+    } catch (error) {
+        console.error('❌ Error sending doctor approval email to:', doctorEmail);
+        console.error('Error details:', error.message);
+        return { success: false, error: error.message };
+    }
+};
+
+module.exports = {
+    sendApprovalEmail,
+    sendDeclineEmail,
+    sendDoctorApprovalEmail
+};

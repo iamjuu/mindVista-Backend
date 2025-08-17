@@ -5,12 +5,15 @@ const NotificationRouter = require('./router/notification')
 const ProfileRouter = require('./router/profle')
 const AppoinmentRouter = require ('./router/appoiment') 
 const DoctorRouter = require('./router/doctor')
+const RefifyUserRouter = require('./router/refifyUser')
 const bodyParser = require('body-parser');
 require('dotenv').config();  // Make sure to load environment variables
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 const DatabaseConnetion = require('./config/databaseConnection')
+// Import models to ensure they are registered with Mongoose
+require('./models/index')
 DatabaseConnetion()
 
 // Multer configuration is handled in individual routers
@@ -35,7 +38,7 @@ app.use('/',NotificationRouter)
 app.use('/',ProfileRouter)
 app.use('/',AppoinmentRouter)
 app.use('/',DoctorRouter)
-
+app.use('/',RefifyUserRouter)
 
 
 app.listen(PORT, () => {

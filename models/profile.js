@@ -4,7 +4,7 @@ const ProfileSchema = new mongoose.Schema({
   // Reference to the user registration
   user: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Signup',
+    ref: 'Doctor', // Temporarily reference Doctor until Signup model is created
     required: true,
   },
   

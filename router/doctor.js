@@ -18,6 +18,9 @@ router.get('/all-docters', DoctorController.getAllDoctorsForForm);
 // Get doctor by ID
 router.get('/doctors/:id', DoctorController.getDoctorById);
 
+// Get doctor by email
+router.get('/doctors/email/:email', DoctorController.getDoctorByEmail);
+
 // Update a doctor
 router.put('/doctor-update/:id', DoctorController.updateDoctor);
 

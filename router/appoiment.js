@@ -18,4 +18,7 @@ router.put('/appointment/:id/approve', AppointmentController.approveAppointment)
 // Decline an appointment
 router.put('/appointment/:id/decline', AppointmentController.declineAppointment)
 
+// Get appointments for a specific doctor
+router.get('/doctor/:doctorId/appointments', AppointmentController.getDoctorAppointments)
+
 module.exports = router;

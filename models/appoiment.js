@@ -5,6 +5,10 @@ const appoinmentSchema = new mongoose.Schema({
         type: String,
         required: true
     },
+    email: {
+        type: String,
+        required: true
+    },
     phone: {
         type: String,
         required: true
@@ -19,7 +23,7 @@ const appoinmentSchema = new mongoose.Schema({
     },
     doctor: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'doctor',
+        ref: 'Doctor',
         required: true
     },
     status: {
@@ -35,11 +39,7 @@ const appoinmentSchema = new mongoose.Schema({
         type: String,
         required: true
     },
-    register: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'register',
-        required: false
-    }
+
 }, {
     timestamps: true
 })
