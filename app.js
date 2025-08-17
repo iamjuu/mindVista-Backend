@@ -6,6 +6,7 @@ const ProfileRouter = require('./router/profle')
 const AppoinmentRouter = require ('./router/appoiment') 
 const DoctorRouter = require('./router/doctor')
 const RefifyUserRouter = require('./router/refifyUser')
+const PaymentRouter = require('./router/payment')
 const bodyParser = require('body-parser');
 require('dotenv').config();  // Make sure to load environment variables
 
@@ -39,6 +40,7 @@ app.use('/',ProfileRouter)
 app.use('/',AppoinmentRouter)
 app.use('/',DoctorRouter)
 app.use('/',RefifyUserRouter)
+app.use('/api',PaymentRouter)
 
 
 app.listen(PORT, () => {
