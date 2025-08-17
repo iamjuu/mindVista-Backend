@@ -466,7 +466,7 @@ module.exports = {
             
             const updatedDoctor = await Doctor.findByIdAndUpdate(
                 id,
-                { $set: { isActive:false, updatedAt: Date.now() } },
+                { $set: { isActive:true, updatedAt: Date.now() } },
                 { new: true }
             );
             
