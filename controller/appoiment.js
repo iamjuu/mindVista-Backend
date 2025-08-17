@@ -1,5 +1,5 @@
 const Appoinment = require('../models/appoiment')
-const axios = require('axios')
+const { sendApprovalEmail, sendDeclineEmail } = require('../utils/mailer')
 
 module.exports = {
     // Get all appointments
@@ -164,22 +164,23 @@ module.exports = {
             appointment.status = 'approved';
             await appointment.save();
             
-            // Send email notification via refify-user endpoint
+            // Send approval email directly to the patient
             try {
-                const emailData = {
-                    appointmentId: appointment._id,
-                    patientName: appointment.name,
-                    patientEmail: appointment.email,
-                    doctorName: appointment.doctor?.name || 'Doctor',
-                    appointmentDate: appointment.date,
-                    appointmentTime: appointment.time
-                };
-
-                // Call the refify-user endpoint to send approval email
-                await axios.post(`${process.env.BACKEND_URL || 'http://localhost:5000'}/refify-user/approve`, emailData);
-                console.log('Approval email sent successfully');
+                const emailResult = await sendApprovalEmail(
+                    appointment.email,
+                    appointment.name,
+                    appointment.doctor?.name || 'Doctor',
+                    appointment.date,
+                    appointment.time
+                );
+                
+                if (emailResult.success) {
+                    console.log('✅ Appointment approval email sent successfully to:', appointment.email);
+                } else {
+                    console.error('❌ Failed to send approval email:', emailResult.error);
+                }
             } catch (emailError) {
-                console.error('Error sending approval email:', emailError);
+                console.error('❌ Error sending approval email:', emailError);
                 // Don't fail the appointment approval if email fails
             }
             
@@ -232,23 +233,24 @@ module.exports = {
             appointment.status = 'declined';
             await appointment.save();
             
-            // Send email notification via refify-user endpoint
+            // Send decline email directly to the patient
             try {
-                const emailData = {
-                    appointmentId: appointment._id,
-                    patientName: appointment.name,
-                    patientEmail: appointment.email,
-                    doctorName: appointment.doctor?.name || 'Doctor',
-                    appointmentDate: appointment.date,
-                    appointmentTime: appointment.time,
-                    reason: reason || 'Schedule conflict'
-                };
-
-                // Call the refify-user endpoint to send decline email
-                await axios.post(`${process.env.BACKEND_URL || 'http://localhost:5000'}/refify-user/decline`, emailData);
-                console.log('Decline email sent successfully');
+                const emailResult = await sendDeclineEmail(
+                    appointment.email,
+                    appointment.name,
+                    appointment.doctor?.name || 'Doctor',
+                    appointment.date,
+                    appointment.time,
+                    reason || 'Schedule conflict'
+                );
+                
+                if (emailResult.success) {
+                    console.log('✅ Appointment decline email sent successfully to:', appointment.email);
+                } else {
+                    console.error('❌ Failed to send decline email:', emailResult.error);
+                }
             } catch (emailError) {
-                console.error('Error sending decline email:', emailError);
+                console.error('❌ Error sending decline email:', emailError);
                 // Don't fail the appointment decline if email fails
             }
             
