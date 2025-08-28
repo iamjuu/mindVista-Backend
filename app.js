@@ -8,6 +8,7 @@ const DoctorRouter = require('./router/doctor')
 const RefifyUserRouter = require('./router/refifyUser')
 const PaymentRouter = require('./router/payment')
 const bodyParser = require('body-parser');
+const fileUpload = require('express-fileupload'); // Add file upload middleware
 require('dotenv').config();  // Make sure to load environment variables
 
 const app = express();
@@ -27,6 +28,21 @@ const corsOptions = {
 
 // Middleware order is important - CORS first, then body parsing
 app.use(cors(corsOptions))
+
+// Add file upload middleware for handling multipart form data
+app.use(fileUpload({
+  createParentPath: true,
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5MB max file size
+  },
+  abortOnLimit: true,
+  responseOnLimit: "File size limit has been reached",
+  useTempFiles: true,
+  tempFileDir: '/tmp/',
+  debug: process.env.NODE_ENV === 'development',
+  safeFileNames: true,
+  preserveExtension: true,
+}));
 
 // Only use bodyParser.json() for JSON requests
 // Don't use bodyParser.urlencoded() as it can interfere with multer

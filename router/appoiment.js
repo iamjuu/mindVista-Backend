@@ -21,4 +21,10 @@ router.put('/appointment/:id/decline', AppointmentController.declineAppointment)
 // Get appointments for a specific doctor
 router.get('/doctor/:doctorId/appointments', AppointmentController.getDoctorAppointments)
 
+// Get today's appointments with video call links
+router.get('/appointments/today', AppointmentController.getTodayAppointments)
+
+// Get video call details by video call ID
+router.get('/video-call/:videoCallId/details', AppointmentController.getVideoCallDetails)
+
 module.exports = router;
