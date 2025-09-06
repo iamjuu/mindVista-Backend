@@ -1,4 +1,5 @@
 const Doctor = require('../models/doctor');
+const { sendDoctorApprovalEmail } = require('../utils/mailer');
 
 module.exports = {
     
@@ -40,6 +41,38 @@ module.exports = {
             });
         } catch (error) {
             console.error('[getDoctorById] Error:', error);
+            return res.status(500).json({ 
+                success: false, 
+                message: 'Error fetching doctor', 
+                error: error.message 
+            });
+        }
+    },
+
+    // Get doctor by email
+    getDoctorByEmail: async (req, res) => {
+        console.log(req.params,'vbnm,');
+
+
+        try {
+            const { email } = req.params;
+            
+            const doctor = await Doctor.findOne({ email: email.toLowerCase() });
+            if (!doctor || !doctor.isActive) {
+                return res.status(404).json({ 
+                    success: false, 
+                    message: 'Doctor not found' 
+                });
+            }
+            
+            console.log(doctor,'doctor');
+            
+            return res.status(200).json({ 
+                success: true, 
+                doctor 
+            });
+        } catch (error) {
+            console.error('[getDoctorByEmail] Error:', error);
             return res.status(500).json({ 
                 success: false, 
                 message: 'Error fetching doctor', 
@@ -433,7 +466,7 @@ module.exports = {
             
             const updatedDoctor = await Doctor.findByIdAndUpdate(
                 id,
-                { $set: { isActive: true, updatedAt: Date.now() } },
+                { $set: { isActive:true, updatedAt: Date.now() } },
                 { new: true }
             );
             
@@ -442,6 +475,15 @@ module.exports = {
                     success: false, 
                     message: 'Doctor not found' 
                 });
+            }
+            
+            // Send approval email to the doctor
+            try {
+                await sendDoctorApprovalEmail(updatedDoctor.email, updatedDoctor.name);
+                console.log('Doctor approval email sent successfully');
+            } catch (emailError) {
+                console.error('Error sending approval email:', emailError);
+                // Don't fail the approval if email fails
             }
             
             return res.status(200).json({ 

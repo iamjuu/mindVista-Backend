@@ -1,23 +1,41 @@
 const Appoinment = require('../models/appoiment')
+const { sendApprovalEmail, sendDeclineEmail, sendApprovalEmailWithVideoCall } = require('../utils/mailer')
+const { generateVideoCallLink } = require('../utils/videoCall')
 
 module.exports = {
     // Get all appointments
     getAppointments: async (req, res) => {
         try {
-            // Remove populate since we don't have a register model
-            const appointments = await Appoinment.find();
+            // Populate doctor information to get doctor name and details
+            const appointments = await Appoinment.find().populate('doctor', 'name specialization experience rating');
             // Transform the data to match frontend expectations (add id field)
             const transformedAppointments = appointments.map(appointment => ({
                 id: appointment._id,
                 _id: appointment._id,
                 name: appointment.name,
+                email: appointment.email,
                 phone: appointment.phone,
+                number: appointment.phone,
                 age: appointment.age,
                 location: appointment.location,
-                doctor: appointment.doctor,
+                doctor: appointment.doctor?._id || appointment.doctor,
+                doctorName: appointment.doctor?.name || appointment.doctorName || 'Unknown Doctor',
+                doctorSpecialization: appointment.doctor?.specialization || 'N/A',
+                doctorExperience: appointment.doctor?.experience || 'N/A',
+                doctorRating: appointment.doctor?.rating || 'N/A',
+                slot: appointment.slot,
                 status: appointment.status,
                 time: appointment.time,
                 date: appointment.date,
+                paymentStatus: appointment.paymentStatus,
+                paymentCompletedAt: appointment.paymentCompletedAt,
+                receiptUploaded: appointment.receiptUploaded,
+                receiptFile: appointment.receiptFile,
+                payment: appointment.payment,
+                appointmentId: appointment.appointmentId,
+                videoCallLink: appointment.videoCallLink,
+                videoCallId: appointment.videoCallId,
+                videoCallGenerated: appointment.videoCallGenerated,
                 createdAt: appointment.createdAt,
                 updatedAt: appointment.updatedAt
             }));
@@ -50,16 +68,24 @@ module.exports = {
                 id: request._id,
                 _id: request._id,
                 name: request.name,
+                email: request.email,
                 phone: request.phone,
                 number: request.phone, // Alternative field name
                 age: request.age,
                 location: request.location,
                 doctor: request.doctor,
-                doctorName: request.doctor?.name || request.doctor || 'N/A',
+                doctorName: request.doctorName || request.doctor?.name || 'N/A',
                 doctorSpecialization: request.doctor?.specialization || 'N/A',
+                slot: request.slot,
                 status: request.status || 'pending',
                 time: request.time,
                 date: request.date,
+                paymentStatus: request.paymentStatus,
+                paymentCompletedAt: request.paymentCompletedAt,
+                receiptUploaded: request.receiptUploaded,
+                receiptFile: request.receiptFile,
+                payment: request.payment,
+                appointmentId: request.appointmentId,
                 createdAt: request.createdAt,
                 updatedAt: request.updatedAt
             }));
@@ -84,54 +110,167 @@ module.exports = {
     // Create a new appointment
     createAppointment: async (req, res) => {
         try {
-
             console.log('Request body:', req.body);
+            console.log('Request files:', req.files);
             
-            const { name, email, number, age, location, slot, time, date, doctor } = req.body;
-            console.log('heloo');
-            if (!name || !number || !age || !location || !time || !date || !doctor) {
-  
-                return res.status(400).json({
-                    success: false,
-                    message: 'All fields are required including doctor selection'
+            // Check if this is a multipart form data request (with receipt file)
+            if (req.files && req.files.receipt) {
+                // Handle receipt upload and appointment creation
+                const receiptFile = req.files.receipt;
+                const appointmentData = JSON.parse(req.body.appointmentData);
+                
+                console.log('Receipt file received:', receiptFile.name);
+                console.log('Appointment data:', appointmentData);
+                
+                // Validate required fields
+                const { name, email, number, age, location, slot, time, date, doctor, doctorName, status, paymentStatus, paymentCompletedAt, receiptUploaded } = appointmentData;
+                
+                if (!name || !email || !number || !age || !location || !time || !date || !doctor) {
+                    return res.status(400).json({
+                        success: false,
+                        message: 'All required fields are missing'
+                    });
+                }
+                
+                // Handle file upload (you can customize this based on your file storage solution)
+                let receiptFilePath = null;
+                try {
+                    // Move file to uploads directory (create this directory if it doesn't exist)
+                    const uploadDir = './uploads/receipts';
+                    const fs = require('fs');
+                    const path = require('path');
+                    
+                    // Create directory if it doesn't exist
+                    if (!fs.existsSync(uploadDir)) {
+                        fs.mkdirSync(uploadDir, { recursive: true });
+                    }
+                    
+                    // Generate unique filename
+                    const timestamp = Date.now();
+                    const fileExtension = path.extname(receiptFile.name);
+                    const fileName = `receipt_${timestamp}${fileExtension}`;
+                    const filePath = path.join(uploadDir, fileName);
+                    
+                    // Move file
+                    await receiptFile.mv(filePath);
+                    receiptFilePath = `/uploads/receipts/${fileName}`;
+                    
+                    console.log('Receipt file saved to:', receiptFilePath);
+                } catch (fileError) {
+                    console.error('Error saving receipt file:', fileError);
+                    return res.status(500).json({
+                        success: false,
+                        message: 'Failed to save receipt file'
+                    });
+                }
+                
+                // Create appointment with receipt information
+                const newAppointment = new Appoinment({
+                    name,
+                    email,
+                    phone: number,
+                    age: parseInt(age),
+                    location,
+                    doctor,
+                    doctorName,
+                    slot,
+                    time,
+                    date,
+                    status: status || 'confirmed',
+                    paymentStatus: paymentStatus || 'completed',
+                    paymentCompletedAt: paymentCompletedAt ? new Date(paymentCompletedAt) : new Date(),
+                    receiptUploaded: receiptUploaded || true,
+                    receiptFile: receiptFilePath,
+                    payment: true, // Set payment to true since receipt is uploaded
+                    appointmentId: appointmentData.appointmentId || null
+                });
+                
+                await newAppointment.save();
+                
+                // Transform the data to match frontend expectations
+                const transformedAppointment = {
+                    id: newAppointment._id,
+                    _id: newAppointment._id,
+                    name: newAppointment.name,
+                    email: newAppointment.email,
+                    phone: newAppointment.phone,
+                    number: newAppointment.phone,
+                    age: newAppointment.age,
+                    location: newAppointment.location,
+                    doctor: newAppointment.doctor,
+                    doctorName: newAppointment.doctorName,
+                    slot: newAppointment.slot,
+                    status: newAppointment.status,
+                    time: newAppointment.time,
+                    date: newAppointment.date,
+                    paymentStatus: newAppointment.paymentStatus,
+                    receiptUploaded: newAppointment.receiptUploaded,
+                    receiptFile: newAppointment.receiptFile,
+                    paymentCompletedAt: newAppointment.paymentCompletedAt,
+                    createdAt: newAppointment.createdAt,
+                    updatedAt: newAppointment.updatedAt
+                };
+                
+                res.status(201).json({
+                    success: true,
+                    data: transformedAppointment,
+                    message: 'Appointment created successfully with receipt'
+                });
+                
+            } else {
+                // Handle regular appointment creation (backward compatibility)
+                const { name, email, number, age, location, slot, time, date, doctor } = req.body;
+                console.log('Creating regular appointment without receipt');
+                
+                if (!name || !email || !number || !age || !location || !time || !date || !doctor) {
+                    return res.status(400).json({
+                        success: false,
+                        message: 'All fields are required including doctor selection and email'
+                    });
+                }
+                
+                const newAppointment = new Appoinment({
+                    name,
+                    email,
+                    phone: number,
+                    age: parseInt(age),
+                    location,
+                    doctor: doctor,
+                    slot: slot || 'morning',
+                    time,
+                    date,
+                    status: 'pending',
+                    paymentStatus: 'pending'
+                });
+                
+                await newAppointment.save();
+                
+                // Transform the data to match frontend expectations
+                const transformedAppointment = {
+                    id: newAppointment._id,
+                    _id: newAppointment._id,
+                    name: newAppointment.name,
+                    email: newAppointment.email,
+                    phone: newAppointment.phone,
+                    number: newAppointment.phone,
+                    age: newAppointment.age,
+                    location: newAppointment.location,
+                    doctor: newAppointment.doctor,
+                    slot: newAppointment.slot,
+                    status: newAppointment.status,
+                    time: newAppointment.time,
+                    date: newAppointment.date,
+                    paymentStatus: newAppointment.paymentStatus,
+                    createdAt: newAppointment.createdAt,
+                    updatedAt: newAppointment.updatedAt
+                };
+                
+                res.status(201).json({
+                    success: true,
+                    data: transformedAppointment,
+                    message: 'Appointment created successfully'
                 });
             }
-      
-            const newAppointment = new Appoinment({
-                name,
-                phone: number, // Map number to phone field
-                age,
-                location,
-                doctor: doctor, // Use the selected doctor from form
-                time,
-                date,
-                register: null, // Set to null for now since no user registration system
-                status: 'pending'
-            });
-            
-            await newAppointment.save();
-            
-            // Transform the data to match frontend expectations
-            const transformedAppointment = {
-                id: newAppointment._id,
-                _id: newAppointment._id,
-                name: newAppointment.name,
-                phone: newAppointment.phone,
-                age: newAppointment.age,
-                location: newAppointment.location,
-                doctor: newAppointment.doctor,
-                status: newAppointment.status,
-                time: newAppointment.time,
-                date: newAppointment.date,
-                createdAt: newAppointment.createdAt,
-                updatedAt: newAppointment.updatedAt
-            };
-            
-            res.status(201).json({
-                success: true,
-                data: transformedAppointment,
-                message: 'Appointment created successfully'
-            });
         } catch (error) {
             console.error('Error creating appointment:', error);
             res.status(500).json({
@@ -147,30 +286,75 @@ module.exports = {
         try {
             const { id } = req.params;
             
-            const appointment = await Appoinment.findByIdAndUpdate(
-                id,
-                { status: 'approved' },
-                { new: true }
-            );
-            
+            const appointment = await Appoinment.findById(id).populate('doctor', 'name specialization');
             if (!appointment) {
                 return res.status(404).json({
                     success: false,
                     message: 'Appointment not found'
                 });
             }
+
+            // Generate unique video call link
+            const videoCallResult = generateVideoCallLink(
+                appointment._id.toString(),
+                appointment.doctor._id.toString(),
+                appointment.name
+            );
+
+            if (!videoCallResult.success) {
+                console.error('❌ Failed to generate video call link:', videoCallResult.error);
+                return res.status(500).json({
+                    success: false,
+                    message: 'Failed to generate video call link',
+                    error: videoCallResult.error
+                });
+            }
+
+            // Update appointment with video call info and approve status
+            appointment.status = 'approved';
+            appointment.videoCallLink = videoCallResult.videoCallLink;
+            appointment.videoCallId = videoCallResult.videoCallId;
+            appointment.videoCallGenerated = true;
+            await appointment.save();
+            
+            // Send approval email with video call link
+            try {
+                const emailResult = await sendApprovalEmailWithVideoCall(
+                    appointment.email,
+                    appointment.name,
+                    appointment.doctor?.name || 'Doctor',
+                    appointment.date,
+                    appointment.time,
+                    videoCallResult.videoCallLink
+                );
+                
+                if (emailResult.success) {
+                    console.log('✅ Appointment approval email with video call link sent successfully to:', appointment.email);
+                } else {
+                    console.error('❌ Failed to send approval email:', emailResult.error);
+                }
+            } catch (emailError) {
+                console.error('❌ Error sending approval email:', emailError);
+                // Don't fail the appointment approval if email fails
+            }
+            
             // Transform the data to match frontend expectations
             const transformedAppointment = {
                 id: appointment._id,
                 _id: appointment._id,
                 name: appointment.name,
+                email: appointment.email,
                 phone: appointment.phone,
                 age: appointment.age,
                 location: appointment.location,
                 doctor: appointment.doctor,
+                doctorName: appointment.doctor?.name || appointment.doctorName,
                 status: appointment.status,
                 time: appointment.time,
                 date: appointment.date,
+                videoCallLink: appointment.videoCallLink,
+                videoCallId: appointment.videoCallId,
+                videoCallGenerated: appointment.videoCallGenerated,
                 createdAt: appointment.createdAt,
                 updatedAt: appointment.updatedAt
             };
@@ -178,7 +362,7 @@ module.exports = {
             res.status(200).json({
                 success: true,
                 data: transformedAppointment,
-                message: 'Appointment approved successfully'
+                message: 'Appointment approved successfully with video call link generated'
             });
         } catch (error) {
             console.error('Error approving appointment:', error);
@@ -194,19 +378,41 @@ module.exports = {
     declineAppointment: async (req, res) => {
         try {
             const { id } = req.params;
+            const { reason } = req.body; // Optional reason for declining
             
-            const appointment = await Appoinment.findByIdAndUpdate(
-                id,
-                { status: 'declined' },
-                { new: true }
-            );
-            
+            const appointment = await Appoinment.findById(id).populate('doctor', 'name specialization');
             if (!appointment) {
                 return res.status(404).json({
                     success: false,
                     message: 'Appointment not found'
                 });
-            }            
+            }
+
+            // Update appointment status
+            appointment.status = 'declined';
+            await appointment.save();
+            
+            // Send decline email directly to the patient
+            try {
+                const emailResult = await sendDeclineEmail(
+                    appointment.email,
+                    appointment.name,
+                    appointment.doctor?.name || 'Doctor',
+                    appointment.date,
+                    appointment.time,
+                    reason || 'Schedule conflict'
+                );
+                
+                if (emailResult.success) {
+                    console.log('✅ Appointment decline email sent successfully to:', appointment.email);
+                } else {
+                    console.error('❌ Failed to send decline email:', emailResult.error);
+                }
+            } catch (emailError) {
+                console.error('❌ Error sending decline email:', emailError);
+                // Don't fail the appointment decline if email fails
+            }
+            
             // Transform the data to match frontend expectations
             const transformedAppointment = {
                 id: appointment._id,
@@ -233,6 +439,388 @@ module.exports = {
             res.status(500).json({
                 success: false,
                 message: 'Failed to decline appointment',
+                error: error.message
+            });
+        }
+    },
+
+    // Get today's appointments with video call links
+    getTodayAppointments: async (req, res) => {
+        try {
+            // Get today's date in YYYY-MM-DD format
+            const today = new Date();
+            const todayString = today.toISOString().split('T')[0];
+            
+            console.log('Fetching appointments for today:', todayString);
+            
+            // Find appointments for today that are approved or confirmed and have video call links
+            const todayAppointments = await Appoinment.find({
+                date: todayString,
+                status: { $in: ['approved', 'confirmed'] },
+                videoCallGenerated: true
+            }).populate('doctor', 'name specialization experience rating').sort({ time: 1 });
+            
+            // Transform the data to match frontend expectations
+            const transformedAppointments = todayAppointments.map(appointment => ({
+                id: appointment._id,
+                _id: appointment._id,
+                name: appointment.name,
+                email: appointment.email,
+                phone: appointment.phone,
+                number: appointment.phone,
+                age: appointment.age,
+                location: appointment.location,
+                doctor: appointment.doctor?._id || appointment.doctor,
+                doctorName: appointment.doctor?.name || appointment.doctorName || 'Unknown Doctor',
+                doctorSpecialization: appointment.doctor?.specialization || 'N/A',
+                doctorExperience: appointment.doctor?.experience || 'N/A',
+                doctorRating: appointment.doctor?.rating || 'N/A',
+                slot: appointment.slot,
+                status: appointment.status,
+                time: appointment.time,
+                date: appointment.date,
+                paymentStatus: appointment.paymentStatus,
+                paymentCompletedAt: appointment.paymentCompletedAt,
+                receiptUploaded: appointment.receiptUploaded,
+                receiptFile: appointment.receiptFile,
+                payment: appointment.payment,
+                appointmentId: appointment.appointmentId,
+                videoCallLink: appointment.videoCallLink,
+                videoCallId: appointment.videoCallId,
+                videoCallGenerated: appointment.videoCallGenerated,
+                createdAt: appointment.createdAt,
+                updatedAt: appointment.updatedAt
+            }));
+            
+            console.log(`Today's appointments fetched: ${transformedAppointments.length} appointments`);
+            
+            res.status(200).json({
+                success: true,
+                data: transformedAppointments,
+                count: transformedAppointments.length,
+                date: todayString,
+                message: `Today's appointments fetched successfully`
+            });
+        } catch (error) {
+            console.error('Error fetching today\'s appointments:', error);
+            res.status(500).json({
+                success: false,
+                message: 'Failed to fetch today\'s appointments',
+                error: error.message
+            });
+        }
+    },
+
+    // Get appointments for a specific doctor
+    getDoctorAppointments: async (req, res) => {
+        try {
+            const { doctorId } = req.params;
+            
+            if (!doctorId) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Doctor ID is required'
+                });
+            }
+
+            const appointments = await Appoinment.find({ doctor: doctorId }).sort({ date: 1, time: 1 });
+            
+            // Transform the data to match frontend expectations
+            const transformedAppointments = appointments.map(appointment => ({
+                id: appointment._id,
+                _id: appointment._id,
+                name: appointment.name,
+                email: appointment.email,
+                phone: appointment.phone,
+                number: appointment.phone, // Alternative field name for compatibility
+                age: appointment.age,
+                location: appointment.location,
+                doctor: appointment.doctor,
+                doctorName: appointment.doctorName,
+                slot: appointment.slot,
+                status: appointment.status || 'pending',
+                time: appointment.time,
+                date: appointment.date,
+                paymentStatus: appointment.paymentStatus,
+                paymentCompletedAt: appointment.paymentCompletedAt,
+                receiptUploaded: appointment.receiptUploaded,
+                receiptFile: appointment.receiptFile,
+                payment: appointment.payment,
+                appointmentId: appointment.appointmentId,
+                videoCallLink: appointment.videoCallLink,
+                videoCallId: appointment.videoCallId,
+                videoCallGenerated: appointment.videoCallGenerated,
+                createdAt: appointment.createdAt,
+                updatedAt: appointment.updatedAt
+            }));
+            
+            console.log(`Appointments fetched for doctor ${doctorId}:`, transformedAppointments);
+            
+            res.status(200).json({
+                success: true,
+                data: transformedAppointments,
+                message: 'Doctor appointments fetched successfully'
+            });
+        } catch (error) {
+            console.error('Error fetching doctor appointments:', error);
+            res.status(500).json({
+                success: false,
+                message: 'Failed to fetch doctor appointments',
+                error: error.message
+            });
+        }
+    },
+
+    // Get video call details by video call ID
+    getVideoCallDetails: async (req, res) => {
+        try {
+            const { videoCallId } = req.params;
+            
+            console.log('🔍 getVideoCallDetails called with videoCallId:', videoCallId);
+            
+            if (!videoCallId) {
+                console.log('❌ No videoCallId provided');
+                return res.status(400).json({
+                    success: false,
+                    message: 'Video call ID is required'
+                });
+            }
+
+            console.log('🔍 Searching for appointment with criteria:', {
+                videoCallId: videoCallId,
+                status: { $in: ['approved', 'confirmed'] },
+                videoCallGenerated: true
+            });
+
+            // First, let's check all appointments to see what we have
+            const allAppointments = await Appoinment.find({}).populate('doctor', 'name specialization experience rating');
+            console.log('🔍 All appointments in database:', allAppointments.map(a => ({
+                id: a._id,
+                status: a.status,
+                videoCallId: a.videoCallId,
+                videoCallGenerated: a.videoCallGenerated,
+                date: a.date,
+                name: a.name
+            })));
+
+            // Find appointment by video call ID
+            const appointment = await Appoinment.findOne({ 
+                videoCallId: videoCallId,
+                status: { $in: ['approved', 'confirmed'] },
+                videoCallGenerated: true 
+            }).populate('doctor', 'name specialization experience rating');
+
+            console.log('🔍 Search result:', appointment);
+            
+            if (!appointment) {
+                console.log('❌ No appointment found with the given criteria');
+                
+                // Let's also check what appointments exist with this videoCallId
+                const allAppointmentsWithId = await Appoinment.find({ videoCallId: videoCallId });
+                console.log('🔍 All appointments with this videoCallId:', allAppointmentsWithId.map(a => ({
+                    id: a._id,
+                    status: a.status,
+                    videoCallGenerated: a.videoCallGenerated,
+                    date: a.date
+                })));
+                
+                return res.status(404).json({
+                    success: false,
+                    message: 'Video call session not found or not authorized'
+                });
+            }
+
+            // Check if appointment is for today (allow same day or future dates for testing)
+            const today = new Date().toISOString().split('T')[0];
+            const appointmentDate = appointment.date;
+            
+            console.log('🔍 Date validation:', {
+                today: today,
+                appointmentDate: appointmentDate,
+                appointmentDateType: typeof appointmentDate,
+                isDateValid: appointmentDate >= today
+            });
+            
+            // For development/testing: allow video calls on or after the appointment date
+            // For production: change this to strict same-day validation
+            if (appointmentDate < today) {
+                console.log('❌ Date validation failed: appointment date is in the past');
+                return res.status(403).json({
+                    success: false,
+                    message: 'Video call is only available on or after the appointment date'
+                });
+            }
+            
+            console.log('✅ Date validation passed');
+
+            const appointmentDetails = {
+                id: appointment._id,
+                name: appointment.name,
+                phone: appointment.phone,
+                age: appointment.age,
+                location: appointment.location,
+                doctorName: appointment.doctor?.name || appointment.doctorName || 'Unknown Doctor',
+                doctorSpecialization: appointment.doctor?.specialization || 'N/A',
+                time: appointment.time,
+                date: appointment.date,
+                videoCallId: appointment.videoCallId,
+                videoCallLink: appointment.videoCallLink,
+                status: appointment.status
+            };
+            
+            res.status(200).json({
+                success: true,
+                data: appointmentDetails,
+                message: 'Video call details retrieved successfully'
+            });
+        } catch (error) {
+            console.error('Error fetching video call details:', error);
+            res.status(500).json({
+                success: false,
+                message: 'Failed to fetch video call details',
+                error: error.message
+            });
+        }
+    },
+
+    // Generate video call link for confirmed appointment
+    generateVideoCallForConfirmed: async (req, res) => {
+        try {
+            const { id } = req.params;
+            
+            const appointment = await Appoinment.findById(id).populate('doctor', 'name specialization');
+            if (!appointment) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'Appointment not found'
+                });
+            }
+
+            // Check if appointment is confirmed and doesn't have video call link
+            if (appointment.status !== 'confirmed') {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Appointment must be confirmed to generate video call link'
+                });
+            }
+
+            if (appointment.videoCallGenerated && appointment.videoCallLink) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Video call link already exists for this appointment'
+                });
+            }
+
+            // Generate unique video call link
+            const videoCallResult = generateVideoCallLink(
+                appointment._id.toString(),
+                appointment.doctor._id.toString(),
+                appointment.name
+            );
+
+            if (!videoCallResult.success) {
+                console.error('❌ Failed to generate video call link:', videoCallResult.error);
+                return res.status(500).json({
+                    success: false,
+                    message: 'Failed to generate video call link',
+                    error: videoCallResult.error
+                });
+            }
+
+            // Update appointment with video call info
+            appointment.videoCallLink = videoCallResult.videoCallLink;
+            appointment.videoCallId = videoCallResult.videoCallId;
+            appointment.videoCallGenerated = true;
+            await appointment.save();
+            
+            // Send email with video call link
+            try {
+                const emailResult = await sendApprovalEmailWithVideoCall(
+                    appointment.email,
+                    appointment.name,
+                    appointment.doctor?.name || 'Doctor',
+                    appointment.date,
+                    appointment.time,
+                    videoCallResult.videoCallLink
+                );
+                
+                if (emailResult.success) {
+                    console.log('✅ Video call link email sent successfully to:', appointment.email);
+                } else {
+                    console.error('❌ Failed to send video call email:', emailResult.error);
+                }
+            } catch (emailError) {
+                console.error('❌ Error sending video call email:', emailError);
+                // Don't fail the video call generation if email fails
+            }
+            
+            // Transform the data to match frontend expectations
+            const transformedAppointment = {
+                id: appointment._id,
+                _id: appointment._id,
+                name: appointment.name,
+                email: appointment.email,
+                phone: appointment.phone,
+                age: appointment.age,
+                location: appointment.location,
+                doctor: appointment.doctor,
+                doctorName: appointment.doctor?.name || appointment.doctorName,
+                status: appointment.status,
+                time: appointment.time,
+                date: appointment.date,
+                videoCallLink: appointment.videoCallLink,
+                videoCallId: appointment.videoCallId,
+                videoCallGenerated: appointment.videoCallGenerated,
+                createdAt: appointment.createdAt,
+                updatedAt: appointment.updatedAt
+            };
+            
+            res.status(200).json({
+                success: true,
+                data: transformedAppointment,
+                message: 'Video call link generated successfully for confirmed appointment'
+            });
+        } catch (error) {
+            console.error('Error generating video call link:', error);
+            res.status(500).json({
+                success: false,
+                message: 'Failed to generate video call link',
+                error: error.message
+            });
+        }
+    },
+
+    // Debug function to check all appointments
+    debugAppointments: async (req, res) => {
+        try {
+            const appointments = await Appoinment.find({}).populate('doctor', 'name specialization');
+            
+            const debugData = appointments.map(appointment => ({
+                id: appointment._id,
+                name: appointment.name,
+                email: appointment.email,
+                status: appointment.status,
+                date: appointment.date,
+                time: appointment.time,
+                videoCallId: appointment.videoCallId,
+                videoCallLink: appointment.videoCallLink,
+                videoCallGenerated: appointment.videoCallGenerated,
+                doctorName: appointment.doctor?.name || appointment.doctorName,
+                createdAt: appointment.createdAt,
+                updatedAt: appointment.updatedAt
+            }));
+
+            res.status(200).json({
+                success: true,
+                data: debugData,
+                message: 'Debug data retrieved successfully',
+                count: appointments.length
+            });
+        } catch (error) {
+            console.error('Error in debug appointments:', error);
+            res.status(500).json({
+                success: false,
+                message: 'Failed to retrieve debug data',
                 error: error.message
             });
         }
