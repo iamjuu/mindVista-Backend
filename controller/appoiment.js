@@ -453,10 +453,10 @@ module.exports = {
             
             console.log('Fetching appointments for today:', todayString);
             
-            // Find appointments for today that are approved and have video call links
+            // Find appointments for today that are approved or confirmed and have video call links
             const todayAppointments = await Appoinment.find({
                 date: todayString,
-                status: 'approved',
+                status: { $in: ['approved', 'confirmed'] },
                 videoCallGenerated: true
             }).populate('doctor', 'name specialization experience rating').sort({ time: 1 });
             
@@ -576,35 +576,82 @@ module.exports = {
         try {
             const { videoCallId } = req.params;
             
+            console.log('🔍 getVideoCallDetails called with videoCallId:', videoCallId);
+            
             if (!videoCallId) {
+                console.log('❌ No videoCallId provided');
                 return res.status(400).json({
                     success: false,
                     message: 'Video call ID is required'
                 });
             }
 
+            console.log('🔍 Searching for appointment with criteria:', {
+                videoCallId: videoCallId,
+                status: { $in: ['approved', 'confirmed'] },
+                videoCallGenerated: true
+            });
+
+            // First, let's check all appointments to see what we have
+            const allAppointments = await Appoinment.find({}).populate('doctor', 'name specialization experience rating');
+            console.log('🔍 All appointments in database:', allAppointments.map(a => ({
+                id: a._id,
+                status: a.status,
+                videoCallId: a.videoCallId,
+                videoCallGenerated: a.videoCallGenerated,
+                date: a.date,
+                name: a.name
+            })));
+
             // Find appointment by video call ID
             const appointment = await Appoinment.findOne({ 
                 videoCallId: videoCallId,
-                status: 'approved',
+                status: { $in: ['approved', 'confirmed'] },
                 videoCallGenerated: true 
             }).populate('doctor', 'name specialization experience rating');
 
+            console.log('🔍 Search result:', appointment);
+            
             if (!appointment) {
+                console.log('❌ No appointment found with the given criteria');
+                
+                // Let's also check what appointments exist with this videoCallId
+                const allAppointmentsWithId = await Appoinment.find({ videoCallId: videoCallId });
+                console.log('🔍 All appointments with this videoCallId:', allAppointmentsWithId.map(a => ({
+                    id: a._id,
+                    status: a.status,
+                    videoCallGenerated: a.videoCallGenerated,
+                    date: a.date
+                })));
+                
                 return res.status(404).json({
                     success: false,
                     message: 'Video call session not found or not authorized'
                 });
             }
 
-            // Check if appointment is for today
+            // Check if appointment is for today (allow same day or future dates for testing)
             const today = new Date().toISOString().split('T')[0];
-            if (appointment.date !== today) {
+            const appointmentDate = appointment.date;
+            
+            console.log('🔍 Date validation:', {
+                today: today,
+                appointmentDate: appointmentDate,
+                appointmentDateType: typeof appointmentDate,
+                isDateValid: appointmentDate >= today
+            });
+            
+            // For development/testing: allow video calls on or after the appointment date
+            // For production: change this to strict same-day validation
+            if (appointmentDate < today) {
+                console.log('❌ Date validation failed: appointment date is in the past');
                 return res.status(403).json({
                     success: false,
-                    message: 'Video call is only available on the appointment date'
+                    message: 'Video call is only available on or after the appointment date'
                 });
             }
+            
+            console.log('✅ Date validation passed');
 
             const appointmentDetails = {
                 id: appointment._id,
@@ -631,6 +678,149 @@ module.exports = {
             res.status(500).json({
                 success: false,
                 message: 'Failed to fetch video call details',
+                error: error.message
+            });
+        }
+    },
+
+    // Generate video call link for confirmed appointment
+    generateVideoCallForConfirmed: async (req, res) => {
+        try {
+            const { id } = req.params;
+            
+            const appointment = await Appoinment.findById(id).populate('doctor', 'name specialization');
+            if (!appointment) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'Appointment not found'
+                });
+            }
+
+            // Check if appointment is confirmed and doesn't have video call link
+            if (appointment.status !== 'confirmed') {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Appointment must be confirmed to generate video call link'
+                });
+            }
+
+            if (appointment.videoCallGenerated && appointment.videoCallLink) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Video call link already exists for this appointment'
+                });
+            }
+
+            // Generate unique video call link
+            const videoCallResult = generateVideoCallLink(
+                appointment._id.toString(),
+                appointment.doctor._id.toString(),
+                appointment.name
+            );
+
+            if (!videoCallResult.success) {
+                console.error('❌ Failed to generate video call link:', videoCallResult.error);
+                return res.status(500).json({
+                    success: false,
+                    message: 'Failed to generate video call link',
+                    error: videoCallResult.error
+                });
+            }
+
+            // Update appointment with video call info
+            appointment.videoCallLink = videoCallResult.videoCallLink;
+            appointment.videoCallId = videoCallResult.videoCallId;
+            appointment.videoCallGenerated = true;
+            await appointment.save();
+            
+            // Send email with video call link
+            try {
+                const emailResult = await sendApprovalEmailWithVideoCall(
+                    appointment.email,
+                    appointment.name,
+                    appointment.doctor?.name || 'Doctor',
+                    appointment.date,
+                    appointment.time,
+                    videoCallResult.videoCallLink
+                );
+                
+                if (emailResult.success) {
+                    console.log('✅ Video call link email sent successfully to:', appointment.email);
+                } else {
+                    console.error('❌ Failed to send video call email:', emailResult.error);
+                }
+            } catch (emailError) {
+                console.error('❌ Error sending video call email:', emailError);
+                // Don't fail the video call generation if email fails
+            }
+            
+            // Transform the data to match frontend expectations
+            const transformedAppointment = {
+                id: appointment._id,
+                _id: appointment._id,
+                name: appointment.name,
+                email: appointment.email,
+                phone: appointment.phone,
+                age: appointment.age,
+                location: appointment.location,
+                doctor: appointment.doctor,
+                doctorName: appointment.doctor?.name || appointment.doctorName,
+                status: appointment.status,
+                time: appointment.time,
+                date: appointment.date,
+                videoCallLink: appointment.videoCallLink,
+                videoCallId: appointment.videoCallId,
+                videoCallGenerated: appointment.videoCallGenerated,
+                createdAt: appointment.createdAt,
+                updatedAt: appointment.updatedAt
+            };
+            
+            res.status(200).json({
+                success: true,
+                data: transformedAppointment,
+                message: 'Video call link generated successfully for confirmed appointment'
+            });
+        } catch (error) {
+            console.error('Error generating video call link:', error);
+            res.status(500).json({
+                success: false,
+                message: 'Failed to generate video call link',
+                error: error.message
+            });
+        }
+    },
+
+    // Debug function to check all appointments
+    debugAppointments: async (req, res) => {
+        try {
+            const appointments = await Appoinment.find({}).populate('doctor', 'name specialization');
+            
+            const debugData = appointments.map(appointment => ({
+                id: appointment._id,
+                name: appointment.name,
+                email: appointment.email,
+                status: appointment.status,
+                date: appointment.date,
+                time: appointment.time,
+                videoCallId: appointment.videoCallId,
+                videoCallLink: appointment.videoCallLink,
+                videoCallGenerated: appointment.videoCallGenerated,
+                doctorName: appointment.doctor?.name || appointment.doctorName,
+                createdAt: appointment.createdAt,
+                updatedAt: appointment.updatedAt
+            }));
+
+            res.status(200).json({
+                success: true,
+                data: debugData,
+                message: 'Debug data retrieved successfully',
+                count: appointments.length
+            });
+        } catch (error) {
+            console.error('Error in debug appointments:', error);
+            res.status(500).json({
+                success: false,
+                message: 'Failed to retrieve debug data',
                 error: error.message
             });
         }

@@ -16,7 +16,8 @@ const generateVideoCallLink = (appointmentId, doctorId, patientName) => {
         const hash = crypto.createHash('sha256').update(dataToHash).digest('hex');
         
         // Create a shorter, more user-friendly video call ID
-        const videoCallId = `vc-${hash.substring(0, 12)}-${timestamp.toString().substring(-6)}`;
+        const timestampStr = timestamp.toString();
+        const videoCallId = `vc-${hash.substring(0, 12)}-${timestampStr.substring(timestampStr.length - 6)}`;
         
         // Generate the video call link (you can customize this domain)
         const baseUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
@@ -90,3 +91,4 @@ module.exports = {
     validateVideoCallId,
     extractInfoFromVideoCallId
 };
+
