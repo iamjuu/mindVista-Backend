@@ -8,6 +8,8 @@ const DoctorRouter = require('./router/doctor')
 const RefifyUserRouter = require('./router/refifyUser')
 const PaymentRouter = require('./router/payment')
 const RazorpayRouter = require('./router/razorpayRouter')
+const VideoCallLinkRouter = require('./router/videoCallLinkRouter')
+const VideoCallStatusRouter = require('./router/videoCallStatus')
 const bodyParser = require('body-parser');
 require('dotenv').config();  // Make sure to load environment variables
 
@@ -43,6 +45,8 @@ app.use('/',DoctorRouter)
 app.use('/',RefifyUserRouter)
 app.use('/api',PaymentRouter)
 app.use('/',RazorpayRouter)
+app.use('/',VideoCallLinkRouter)
+app.use('/',VideoCallStatusRouter)
 
 
 
