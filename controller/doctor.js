@@ -83,8 +83,10 @@ module.exports = {
 
     // Create new doctor
     createDoctor: async (req, res) => {
+        console.log("hello")
         try {
             const { name, email, specialization, phone, experience, patients, rating, available, qualification, designation, department, age, gender, address, bio, consultationFee } = req.body;
+            console.log(req.body,'data gooted')
             
             // Validate required fields
             if (!name || !specialization || !phone || !experience ) {
