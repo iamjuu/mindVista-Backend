@@ -110,17 +110,16 @@ module.exports = {
     // Create a new appointment
     createAppointment: async (req, res) => {
         try {
-            console.log('Request body:', req.body);
-            console.log('Request files:', req.files);
+
             
             // Check if this is a multipart form data request (with receipt file)
             if (req.files && req.files.receipt) {
                 // Handle receipt upload and appointment creation
                 const receiptFile = req.files.receipt;
+                console.log(receiptFile,'image')
                 const appointmentData = JSON.parse(req.body.appointmentData);
                 
                 console.log('Receipt file received:', receiptFile.name);
-                console.log('Appointment data:', appointmentData);
                 
                 // Validate required fields
                 const { name, email, number, age, location, slot, time, date, doctor, doctorName, status, paymentStatus, paymentCompletedAt, receiptUploaded } = appointmentData;
@@ -325,7 +324,7 @@ module.exports = {
                     appointment.doctor?.name || 'Doctor',
                     appointment.date,
                     appointment.time,
-                    videoCallResult.videoCallLink
+                    `${videoCallResult.videoCallLink}?role=patient`
                 );
                 
                 if (emailResult.success) {
@@ -575,8 +574,10 @@ module.exports = {
     getVideoCallDetails: async (req, res) => {
         try {
             const { videoCallId } = req.params;
+            const role = (req.query.role || '').toLowerCase();
             
             console.log('🔍 getVideoCallDetails called with videoCallId:', videoCallId);
+            console.log('🔍 role from query:', role);
             
             if (!videoCallId) {
                 console.log('❌ No videoCallId provided');
@@ -643,7 +644,9 @@ module.exports = {
             
             // For development/testing: allow video calls on or after the appointment date
             // For production: change this to strict same-day validation
-            if (appointmentDate < today) {
+            // If doctor/admin, bypass date restriction
+            const isPrivileged = role === 'doctor' || role === 'admin';
+            if (!isPrivileged && appointmentDate < today) {
                 console.log('❌ Date validation failed: appointment date is in the past');
                 return res.status(403).json({
                     success: false,
@@ -741,7 +744,7 @@ module.exports = {
                     appointment.doctor?.name || 'Doctor',
                     appointment.date,
                     appointment.time,
-                    videoCallResult.videoCallLink
+                    `${videoCallResult.videoCallLink}?role=patient`
                 );
                 
                 if (emailResult.success) {
