@@ -292,7 +292,6 @@ module.exports = {
                     message: 'Appointment not found'
                 });
             }
-
             // Generate unique video call link
             const videoCallResult = generateVideoCallLink(
                 appointment._id.toString(),
@@ -318,17 +317,22 @@ module.exports = {
             
             // Send approval email with video call link
             try {
+                const patientVideoCallLink = `${videoCallResult.videoCallLink}?role=patient`;
+                const doctorVideoCallLink = `${videoCallResult.videoCallLink}?role=doctor`;
+                
                 const emailResult = await sendApprovalEmailWithVideoCall(
                     appointment.email,
                     appointment.name,
                     appointment.doctor?.name || 'Doctor',
                     appointment.date,
                     appointment.time,
-                    `${videoCallResult.videoCallLink}?role=patient`
+                    patientVideoCallLink
                 );
                 
                 if (emailResult.success) {
                     console.log('✅ Appointment approval email with video call link sent successfully to:', appointment.email);
+                    console.log('📧 Patient video call link:', patientVideoCallLink);
+                    console.log('👨‍⚕️ Doctor video call link:', doctorVideoCallLink);
                 } else {
                     console.error('❌ Failed to send approval email:', emailResult.error);
                 }
