@@ -73,3 +73,4 @@ echo "   4. Patient joins with email link"
 echo ""
 echo "Press any key to continue..."
 pause > nul
+

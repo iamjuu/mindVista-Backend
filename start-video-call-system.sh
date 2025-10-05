@@ -73,3 +73,4 @@ trap cleanup SIGINT SIGTERM
 
 # Wait for processes
 wait
+
