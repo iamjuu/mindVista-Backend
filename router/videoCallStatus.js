@@ -116,4 +116,40 @@ router.get('/video-call/:videoCallId/status', async (req, res) => {
     }
 });
 
+
+// Get video call details
+// router.get('/video-call/:videoCallId/details', async (req, res) => {
+//   try {
+//     const { videoCallId } = req.params;
+
+//     // Fetch appointment/video call info from database
+//     const appointment = await Appointment.findOne({ videoCallId });
+//     if (!appointment) {
+//       return res.status(404).json({
+//         success: false,
+//         message: 'Video call not found'
+//       });
+//     }
+
+//     res.json({
+//       success: true,
+//       data: {
+//         name: appointment.patientName,
+//         doctorName: appointment.doctorName,
+//         date: appointment.date,
+//         time: appointment.time,
+//         videoCallId: appointment.videoCallId
+//       }
+//     });
+//   } catch (error) {
+//     res.status(500).json({
+//       success: false,
+//       message: 'Failed to get video call details',
+//       error: error.message
+//     });
+//   }
+// });
+
+
+
 module.exports = router;
