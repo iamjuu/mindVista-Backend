@@ -3,6 +3,7 @@ const router = express.Router()
 
 const AppointmentController = require('../controller/appoiment');
 
+
 // Get all appointments
 router.get('/appointment', AppointmentController.getAppointments)
 
