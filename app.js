@@ -30,6 +30,7 @@ const PaymentRouter = require('./router/payment');
 const RazorpayRouter = require('./router/razorpayRouter');
 const VideoCallLinkRouter = require('./router/videoCallLinkRouter');
 const VideoCallStatusRouter = require('./router/videoCallStatus');
+const ReviewRouter = require('./router/review');
 
 app.use('/', NotificationRouter);
 app.use('/', ProfileRouter);
@@ -40,6 +41,7 @@ app.use('/api', PaymentRouter);
 app.use('/', RazorpayRouter);
 app.use('/', VideoCallLinkRouter);
 app.use('/', VideoCallStatusRouter);
+app.use('/', ReviewRouter);
 
 // ----------------- HTTP + WS SERVER -----------------
 const server = http.createServer(app);
