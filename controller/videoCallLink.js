@@ -1,6 +1,6 @@
 const { v4: uuidv4 } = require("uuid");
 const generateVideoCallLink = require('../utils/videoCall');
-
+const appoinment = require('../models/appoiment')
 module.exports = {
     VideoCallLink: (req, res) => {
         try {
@@ -69,5 +69,52 @@ module.exports = {
                 error: error.message
             });
         }
-    }
+    },
+    endsession: async (req, res) => {
+        console.log("📩 Incoming request body:", req.body);
+      
+        try {
+          const { videoCallId } = req.body;
+      
+          // ✅ Step 1: Validate input
+          if (!videoCallId) {
+            console.warn("⚠️ Missing videoCallId in request body");
+            return res
+              .status(400)
+              .json({ success: false, message: "videoCallId is required" });
+          }
+      
+          console.log("🔍 Searching for appointment with videoCallId:", videoCallId);
+      
+          // ✅ Step 2: Find and update
+          const updatedAppointment = await appoinment.findOneAndUpdate(
+            { videoCallId },
+            { $set: { sessionEnd: true } },
+            { new: true }
+          );
+      
+          // ✅ Step 3: Handle not found
+          if (!updatedAppointment) {
+            console.warn("❌ Appointment not found for videoCallId:", videoCallId);
+            return res
+              .status(404)
+              .json({ success: false, message: "Appointment not found" });
+          }
+      
+          // ✅ Step 4: Success
+          console.log("✅ Session ended successfully for:", updatedAppointment.name);
+          res.status(200).json({
+            success: true,
+            message: "Session ended successfully",
+            data: updatedAppointment,
+          });
+        } catch (error) {
+          // ✅ Step 5: Error handling
+          console.error("💥 Error ending session:", error);
+          res
+            .status(500)
+            .json({ success: false, message: "Internal Server Error", error: error.message });
+        }
+      }
+      
 }

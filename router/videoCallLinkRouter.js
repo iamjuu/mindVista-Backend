@@ -4,6 +4,8 @@ const VideoCallLinkController = require('../controller/videoCallLink');
 const Appoinment = require('../models/appoiment')
 router.post('/videocall-link', VideoCallLinkController.VideoCallLink);
 router.post('/generate-simple-link', VideoCallLinkController.generateSimpleLink);
+
+
 router.get('/video-call/:videoCallId/details', async (req, res) => {
   try {
     const { videoCallId } = req.params;
@@ -39,5 +41,8 @@ router.get('/video-call/:videoCallId/details', async (req, res) => {
     });
   }
 });
+
+
+router.post('/end-session',VideoCallLinkController.endsession)
 
 module.exports = router;
