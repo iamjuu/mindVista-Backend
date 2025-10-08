@@ -4,7 +4,7 @@ const Notification = require("../controller/notification");
 
 // Create
 router.post("/notification-sent", Notification.notificationsent);
-router.post("/notification", Notification.notificationPost);
+router.post("/notification", Notification.notificationsent);
 
 // Read
 router.get("/notifications/:userId", Notification.listByUser);

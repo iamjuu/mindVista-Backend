@@ -1,38 +1,53 @@
 const Notification = require('../models/notification');
+const Appoinment = require('../models/appoiment');
+const { sendNotificationEmail } = require('../utils/mailer');
 
 module.exports = {
-    // admin side
+    // create notification
     notificationsent: async (req, res) => {
-
-
-        console.log('data')
         try {
             const { userId, title, message, type = 'info', metadata = {} } = req.body;
+
+            console.log(metadata,'data gotter')
             if (!userId || !title || !message) {
                 return res.status(400).json({ success: false, message: 'userId, title and message are required' });
             }
 
             const created = await Notification.create({ userId, title, message, type, metadata });
-
+            
+            // Send email if metadata contains date and time
+            if (metadata.date && metadata.time) {
+                try {
+                    // Fetch user details from appointment
+                    const appointment = await Appoinment.findById(userId);
+                    if (appointment && appointment.email) {
+                        console.log('📧 Sending notification email to:', appointment.email);
+                        const emailResult = await sendNotificationEmail(
+                            appointment.email,
+                            appointment.name,
+                            title,
+                            message,
+                            metadata
+                        );
+                        
+                        if (emailResult.success) {
+                            console.log('✅ Email sent successfully for notification:', created._id);
+                        } else {
+                            console.error('❌ Failed to send email for notification:', created._id, emailResult.error);
+                        }
+                    } else {
+                        console.log('⚠️ No email found for user:', userId, 'or appointment not found');
+                    }
+                } catch (emailError) {
+                    console.error('❌ Error sending notification email:', emailError.message);
+                    // Don't fail the notification creation if email fails
+                }
+            }
+            
             return res.status(201).json({ success: true, data: created });
             
         } catch (error) {
             console.error('notificationsent error:', error);
-            return res.status(500).json({ success: false, message: 'Failed to create notification' });
-        }
-    },
-
-    // create or update via post (kept for backward compatibility)
-    notificationPost: async (req, res) => {
-        try {
-            const { userId, title, message, type = 'info', metadata = {} } = req.body;
-            if (!userId || !title || !message) {
-                return res.status(400).json({ success: false, message: 'userId, title and message are required' });
-            }
-            const created = await Notification.create({ userId, title, message, type, metadata });
-            return res.status(201).json({ success: true, data: created });
-        } catch (error) {
-            console.error('notificationPost error:', error);
             return res.status(500).json({ success: false, message: 'Failed to create notification' });
         }
     },
