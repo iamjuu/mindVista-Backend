@@ -2,8 +2,8 @@ const Review = require('../models/review');
 
 const create = async (req, res) => {
   try {
-    const { name, title, description, rating, avatarUrl } = req.body;
-    if (!name || !title || !description || !rating) {
+    const { name, description, rating, avatarUrl } = req.body;
+    if (!name || !description || !rating) {
       return res.status(400).json({ message: 'Missing required fields' });
     }
     const parsedRating = Number(rating);
@@ -13,7 +13,6 @@ const create = async (req, res) => {
 
     const review = await Review.create({
       name,
-      title,
       description,
       rating: parsedRating,
       avatarUrl: avatarUrl || ''
@@ -42,10 +41,9 @@ const list = async (req, res) => {
 const update = async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, title, description, rating, avatarUrl } = req.body;
+    const { name,  description, rating, avatarUrl } = req.body;
     const updateFields = {};
     if (name !== undefined) updateFields.name = name;
-    if (title !== undefined) updateFields.title = title;
     if (description !== undefined) updateFields.description = description;
     if (avatarUrl !== undefined) updateFields.avatarUrl = avatarUrl;
     if (rating !== undefined) {
