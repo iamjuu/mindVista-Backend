@@ -13,7 +13,7 @@ module.exports = {
             }
 
             const created = await Notification.create({ userId, title, message, type, metadata });
-console.log('data saved')
+
             return res.status(201).json({ success: true, data: created });
             
         } catch (error) {
