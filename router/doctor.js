@@ -36,13 +36,9 @@ router.get('/doctors/admin/all', DoctorController.getAllDoctorsAdmin);
 // Approve doctor
 router.put('/doctors/approve/:id', DoctorController.approveDoctor);
 
-
 // *********************login doctor*********************
 // Doctor login
 router.post('/doctor/login', DoctorController.loginDoctor);
-
-
-
 
 
 module.exports = router; 
