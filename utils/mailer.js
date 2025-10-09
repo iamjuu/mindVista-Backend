@@ -364,109 +364,44 @@ const sendNotificationEmail = async (userEmail, userName, title, message, metada
     try {
         const transporter = createTransporter();
 
-        // Format date and time if they exist in metadata
-        let dateTimeInfo = '';
-        if (metadata.date && metadata.time) {
-            dateTimeInfo = `
-                <div style="background-color: #f0f9ff; padding: 25px; border-radius: 10px; margin-bottom: 25px; border-left: 4px solid #3b82f6;">
-                    <h3 style="color: #1e40af; margin: 0 0 20px 0; font-size: 18px; font-weight: 600;">📅 Schedule Information</h3>
-                    <div style="background-color: #ffffff; padding: 20px; border-radius: 8px; border: 1px solid #93c5fd;">
-                        <ul style="color: #1e40af; margin: 0; padding-left: 0; list-style: none;">
-                            <li style="margin-bottom: 12px; padding-left: 25px; position: relative;">
-                                <span style="position: absolute; left: 0; top: 2px; color: #3b82f6; font-size: 16px;">📅</span>
-                                <strong>Date:</strong> ${metadata.date}
-                            </li>
-                            <li style="margin-bottom: 0; padding-left: 25px; position: relative;">
-                                <span style="position: absolute; left: 0; top: 2px; color: #3b82f6; font-size: 16px;">⏰</span>
-                                <strong>Time:</strong> ${metadata.time}
-                            </li>
-                        </ul>
-                    </div>
-                </div>
-            `;
-        }
+		// Prepare a human-friendly timestamp like on the board (e.g., 11:55 AM or with date)
+		let prettyTimestamp = '';
+		if (metadata && (metadata.time || metadata.date)) {
+			prettyTimestamp = [metadata.time, metadata.date].filter(Boolean).join(' • ');
+		} else {
+			const now = new Date();
+			const timeString = now.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+			prettyTimestamp = timeString;
+		}
 
         const mailOptions = {
             from: process.env.EMAIL_USER,
             to: userEmail,
             subject: `${title} - MindVista Psychology`,
-            html: `
-                <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f8fafc;">
-                    <div style="background-color: #ffffff; padding: 30px; border-radius: 12px; box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1); border: 1px solid #e2e8f0;">
-                        <div style="text-align: center; margin-bottom: 30px;">
-                            <h1 style="color: #1e293b; margin: 0; font-size: 28px; font-weight: 600;">📋 ${title}</h1>
-                            <p style="color: #64748b; margin: 10px 0 0 0; font-size: 16px;">Your notification checklist from MindVista Psychology</p>
-                        </div>
-                        
-                        <div style="background-color: #f1f5f9; padding: 25px; border-radius: 10px; margin-bottom: 25px; border-left: 4px solid #3b82f6;">
-                            <h2 style="color: #1e293b; margin: 0 0 20px 0; font-size: 20px; font-weight: 600;">📝 Notification Details</h2>
-                            <div style="background-color: #ffffff; padding: 20px; border-radius: 8px; border: 1px solid #e2e8f0;">
-                                <p style="color: #475569; margin: 0; line-height: 1.6; font-size: 16px;">${message}</p>
-                            </div>
-                        </div>
-                        
-                        ${dateTimeInfo}
-                        
-                        <div style="background-color: #fef3c7; padding: 25px; border-radius: 10px; margin-bottom: 25px; border-left: 4px solid #f59e0b;">
-                            <h3 style="color: #92400e; margin: 0 0 20px 0; font-size: 18px; font-weight: 600;">✅ Action Items</h3>
-                            <div style="background-color: #ffffff; padding: 20px; border-radius: 8px; border: 1px solid #fbbf24;">
-                                <ul style="color: #78350f; margin: 0; padding-left: 0; list-style: none;">
-                                    <li style="margin-bottom: 12px; padding-left: 25px; position: relative;">
-                                        <span style="position: absolute; left: 0; top: 2px; color: #f59e0b; font-size: 16px;">☐</span>
-                                        Keep this notification for your records
-                                    </li>
-                                    <li style="margin-bottom: 12px; padding-left: 25px; position: relative;">
-                                        <span style="position: absolute; left: 0; top: 2px; color: #f59e0b; font-size: 16px;">☐</span>
-                                        Contact our support team if you have questions
-                                    </li>
-                                    <li style="margin-bottom: 12px; padding-left: 25px; position: relative;">
-                                        <span style="position: absolute; left: 0; top: 2px; color: #f59e0b; font-size: 16px;">☐</span>
-                                        Call our helpline for urgent matters
-                                    </li>
-                                    <li style="margin-bottom: 0; padding-left: 25px; position: relative;">
-                                        <span style="position: absolute; left: 0; top: 2px; color: #f59e0b; font-size: 16px;">☐</span>
-                                        Stay updated with your mental health journey
-                                    </li>
-                                </ul>
-                            </div>
-                        </div>
-                        
-                        <div style="background-color: #ecfdf5; padding: 20px; border-radius: 10px; margin-bottom: 25px; border-left: 4px solid #10b981;">
-                            <h3 style="color: #047857; margin: 0 0 15px 0; font-size: 18px; font-weight: 600;">🎯 Next Steps</h3>
-                            <div style="background-color: #ffffff; padding: 15px; border-radius: 8px; border: 1px solid #6ee7b7;">
-                                <ul style="color: #065f46; margin: 0; padding-left: 0; list-style: none;">
-                                    <li style="margin-bottom: 8px; padding-left: 25px; position: relative;">
-                                        <span style="position: absolute; left: 0; top: 2px; color: #10b981; font-size: 14px;">✓</span>
-                                        Review the notification details above
-                                    </li>
-                                    <li style="margin-bottom: 8px; padding-left: 25px; position: relative;">
-                                        <span style="position: absolute; left: 0; top: 2px; color: #10b981; font-size: 14px;">✓</span>
-                                        Take any required actions
-                                    </li>
-                                    <li style="margin-bottom: 0; padding-left: 25px; position: relative;">
-                                        <span style="position: absolute; left: 0; top: 2px; color: #10b981; font-size: 14px;">✓</span>
-                                        Contact us if you need assistance
-                                    </li>
-                                </ul>
-                            </div>
-                        </div>
-                        
-                        <div style="text-align: center; margin-top: 30px; padding: 20px; background-color: #f8fafc; border-radius: 10px;">
-                            <p style="color: #64748b; margin: 0; font-size: 14px; line-height: 1.5;">
-                                <strong>Thank you for choosing MindVista Psychology.</strong><br>
-                                We're committed to supporting your mental health journey.
-                            </p>
-                        </div>
-                        
-                        <div style="text-align: center; margin-top: 20px; padding-top: 20px; border-top: 1px solid #e2e8f0;">
-                            <p style="color: #94a3b8; margin: 0; font-size: 12px;">
-                                This is an automated email. Please do not reply to this message.<br>
-                                For support, contact our team through the platform.
-                            </p>
-                        </div>
-                    </div>
-                </div>
-            `
+			html: `
+				<div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 680px; margin: 0 auto; padding: 24px; background-color: #f8fafc;">
+					<div style="background-color: #ffffff; border: 1px solid #e5e7eb; border-radius: 12px; box-shadow: 0 6px 18px rgba(0,0,0,0.06); padding: 28px;">
+						<h1 style="margin: 0 0 6px 0; font-size: 14px; line-height: 1.2; color: #0f172a;">Mindvista</h1>
+						<p style="margin: 0 0 24px 0; font-size: 15px; color: #64748b;">Displaying important announcements and updates.</p>
+
+						<!-- Notice card -->
+						<div style="border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden;">
+							<div style="padding: 18px 20px; background-color: #f8fafc;">
+								
+								${message ? `<div style="font-size: 14px; color: #374151; margin-top: 6px; line-height: 1.6;">${message}</div>` : ''}
+							</div>
+							<div style="padding: 10px 20px; border-top: 1px solid #e5e7eb; background-color: #ffffff;">
+								<span style="display: inline-block; font-size: 12px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: .02em;">${prettyTimestamp}</span>
+							</div>
+						</div>
+
+						<!-- Footer -->
+						<div style="text-align: center; margin-top: 22px; color: #94a3b8; font-size: 12px;">
+							This is an automated email from MindVista Psychology.
+						</div>
+					</div>
+				</div>
+			`
         };
 
         const info = await transporter.sendMail(mailOptions);
