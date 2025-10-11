@@ -359,9 +359,70 @@ const sendApprovalEmailWithVideoCall = async (patientEmail, patientName, doctorN
     }
 };
 
+// Send generic notification email
+const sendNotificationEmail = async (userEmail, userName, title, message, metadata = {}) => {
+    try {
+        const transporter = createTransporter();
+
+		// Prepare a human-friendly timestamp like on the board (e.g., 11:55 AM or with date)
+		let prettyTimestamp = '';
+		if (metadata && (metadata.time || metadata.date)) {
+			prettyTimestamp = [metadata.time, metadata.date].filter(Boolean).join(' • ');
+		} else {
+			const now = new Date();
+			const timeString = now.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+			prettyTimestamp = timeString;
+		}
+
+        const mailOptions = {
+            from: process.env.EMAIL_USER,
+            to: userEmail,
+            subject: `${title} - MindVista Psychology`,
+			html: `
+				<div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 680px; margin: 0 auto; padding: 24px; background-color: #f8fafc;">
+					<div style="background-color: #ffffff; border: 1px solid #e5e7eb; border-radius: 12px; box-shadow: 0 6px 18px rgba(0,0,0,0.06); padding: 28px;">
+						<h1 style="margin: 0 0 6px 0; font-size: 14px; line-height: 1.2; color: #0f172a;">Mindvista</h1>
+						<p style="margin: 0 0 24px 0; font-size: 15px; color: #64748b;">Displaying important announcements and updates.</p>
+
+						<!-- Notice card -->
+						<div style="border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden;">
+							<div style="padding: 18px 20px; background-color: #f8fafc;">
+								
+								${message ? `<div style="font-size: 14px; color: #374151; margin-top: 6px; line-height: 1.6;">${message}</div>` : ''}
+							</div>
+							<div style="padding: 10px 20px; border-top: 1px solid #e5e7eb; background-color: #ffffff;">
+								<span style="display: inline-block; font-size: 12px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: .02em;">${prettyTimestamp}</span>
+							</div>
+						</div>
+
+						<!-- Footer -->
+						<div style="text-align: center; margin-top: 22px; color: #94a3b8; font-size: 12px;">
+							This is an automated email from MindVista Psychology.
+						</div>
+					</div>
+				</div>
+			`
+        };
+
+        const info = await transporter.sendMail(mailOptions);
+        console.log('✅ Notification email sent successfully to:', userEmail);
+        console.log('📧 Message ID:', info.messageId);
+        console.log('👤 User:', userName);
+        console.log('📝 Title:', title);
+        console.log('📅 Date:', metadata.date || 'N/A');
+        console.log('⏰ Time:', metadata.time || 'N/A');
+        return { success: true, messageId: info.messageId };
+    } catch (error) {
+        console.error('❌ Error sending notification email to:', userEmail);
+        console.error('Error details:', error.message);
+        return { success: false, error: error.message };
+    }
+};
+
 module.exports = {
     sendApprovalEmail,
     sendDeclineEmail,
     sendDoctorApprovalEmail,
-    sendApprovalEmailWithVideoCall
+    sendApprovalEmailWithVideoCall,
+    sendNotificationEmail
 };

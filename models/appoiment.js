@@ -87,6 +87,11 @@ const appoinmentSchema = new mongoose.Schema({
     videoCallGenerated: {
         type: Boolean,
         default: false
+    },sessionEnd:
+    {
+        type:Boolean,
+        default:false,
+        
     }
 
 }, {
