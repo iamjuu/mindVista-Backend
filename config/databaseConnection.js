@@ -12,7 +12,7 @@ const DatabaseConnection = async () => {
     });
     
     console.log('✅ Connected to MongoDB');
-    console.log('📍 Database:', mongoose.connection.name);
+
     
     // Handle connection errors after initial connection
     mongoose.connection.on('error', err => {
