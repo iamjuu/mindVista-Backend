@@ -64,7 +64,8 @@ const verifyPayment = async (req, res) => {
       razorpay_order_id,
       razorpay_payment_id,
       razorpay_signature,
-      appointmentData
+      appointmentData,
+      amount
     } = req.body;
 
     // Validate required fields
@@ -129,6 +130,9 @@ const verifyPayment = async (req, res) => {
           appointment.paymentStatus = 'completed';
           appointment.payment = true;
           appointment.paymentCompletedAt = new Date();
+          if (amount) {
+            appointment.amount = amount;
+          }
           await appointment.save();
           
           console.log('✅ Payment status updated to completed for appointment:', appointmentData.appointmentId);

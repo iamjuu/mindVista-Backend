@@ -1,7 +1,6 @@
 const Razorpay = require('razorpay');
 const crypto = require('crypto');
 const mongoose = require('mongoose');
-const { log } = require('console');
 
 // Initialize Razorpay instance
 const razorpay = new Razorpay({
@@ -35,7 +34,7 @@ exports.createOrder = async (req, res) => {
 // Verify Razorpay payment
 exports.verifyPayment = async (req, res) => {
   console.log('verifyPayment', req.body);
-  const { razorpay_order_id, razorpay_payment_id, razorpay_signature, appointmentId } = req.body;
+  const { razorpay_order_id, razorpay_payment_id, razorpay_signature, appointmentId, amount } = req.body;
 
   if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
     return res.status(400).json({ success: false, message: "Missing payment details" });
@@ -68,7 +67,31 @@ console.log('generated_signature', generated_signature);
           console.log('payment');
           console.log('paymentStatus', 'completed');
           appointment.paymentCompletedAt = new Date();
+          if (amount) {
+            appointment.amount = amount;
+          }
           await appointment.save();
+          
+
+          // Add amount to corresponding doctor's salary
+          if (appointment.doctor && amount) {
+            try {
+              const Doctor = require('../models/doctor');
+              const doctor = await Doctor.findById(appointment.doctor);
+              
+              if (doctor) {
+                // Add exact amount to existing salary (accumulate total)
+                doctor.selary = (doctor.selary || 0) + amount;
+                await doctor.save();
+                console.log(`✅ Added ₹${amount} to doctor ${doctor.name}'s salary. New total salary: ₹${doctor.selary}`);
+              } else {
+                console.log('⚠️ Doctor not found for ID:', appointment.doctor);
+              }
+            } catch (doctorUpdateError) {
+              console.error('❌ Error updating doctor salary:', doctorUpdateError);
+            }
+          }
+
           
           console.log('✅ Payment status updated to completed for appointment:', appointmentId);
         } else {

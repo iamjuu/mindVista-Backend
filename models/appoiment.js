@@ -58,6 +58,10 @@ const appoinmentSchema = new mongoose.Schema({
         enum: ['pending', 'completed', 'failed'],
         default: 'pending'
     },
+    amount: {
+        type: Number,
+        default: 0
+    },
     paymentCompletedAt: {
         type: Date,
         default: null

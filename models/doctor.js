@@ -27,27 +27,11 @@ const DoctorSchema = new mongoose.Schema({
   },
   
   // Professional details
-  qualification: String,
   experience: {
     type: Number,
     required: true,
     min: 0
-  }, // years of experience
-  designation: String,
-  department: String,
-  
-  // Frontend specific fields
-  patients: {
-    type: Number,
-    default: 0,
-    min: 0
-  }, // number of patients treated
-  rating: {
-    type: Number,
-    min: 0,
-    max: 5,
-    default: 0
-  }, // doctor rating
+  }, 
   available: {
     type: Boolean,
     default: true
@@ -63,8 +47,6 @@ const DoctorSchema = new mongoose.Schema({
   }, // Store the image file path
   bio: String,
   
-  // Professional settings
-  consultationFee: Number,
   availableSlots: [{
     day: String,
     startTime: String,
@@ -76,6 +58,10 @@ const DoctorSchema = new mongoose.Schema({
     type: String,
     required: true,
     trim: true
+  },
+  selary:{
+    type:Number,
+    default:0
   },
   
   // Status

@@ -181,7 +181,8 @@ module.exports = {
                     receiptUploaded: receiptUploaded || true,
                     receiptFile: receiptFilePath,
                     payment: true, // Set payment to true since receipt is uploaded
-                    appointmentId: appointmentData.appointmentId || null
+                    appointmentId: appointmentData.appointmentId || null,
+                    amount: 500 // Default appointment amount
                 });
                 
                 await newAppointment.save();
@@ -239,7 +240,8 @@ module.exports = {
                     time,
                     date,
                     status: 'pending',
-                    paymentStatus: 'pending'
+                    paymentStatus: 'pending',
+                    amount: 0 // No payment yet for pending appointments
                 });
                 
                 await newAppointment.save();
