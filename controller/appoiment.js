@@ -801,6 +801,101 @@ module.exports = {
         }
     },
 
+    // Get available time slots for a doctor on a specific date
+    getAvailableTimeSlots: async (req, res) => {
+        try {
+            const { doctorId, date, slot } = req.query;
+            
+            if (!doctorId || !date) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Doctor ID and date are required'
+                });
+            }
+
+            // Define all possible time slots based on slot type
+            const allTimeSlots = {
+                morning: [
+                    { value: '09:00-10:00', label: '9:00 AM - 10:00 AM' },
+                    { value: '10:00-11:00', label: '10:00 AM - 11:00 AM' },
+                    { value: '11:00-12:00', label: '11:00 AM - 12:00 PM' }
+                ],
+                afternoon: [
+                    { value: '12:00-13:00', label: '12:00 PM - 1:00 PM' },
+                    { value: '13:00-14:00', label: '1:00 PM - 2:00 PM' },
+                    { value: '14:00-15:00', label: '2:00 PM - 3:00 PM' }
+                ],
+                evening: [
+                    { value: '15:00-16:00', label: '3:00 PM - 4:00 PM' },
+                    { value: '16:00-17:00', label: '4:00 PM - 5:00 PM' }
+                ],
+                night: [
+                    { value: '19:00-22:00', label: '7:00 PM - 10:00 PM' },
+                    { value: '22:00-23:00', label: '10:00 PM - 11:00 PM' },
+                    { value: '23:00-00:00', label: '11:00 PM - 12:00 AM' },
+                    { value: '00:00-01:00', label: '12:00 AM - 1:00 AM' },
+                    { value: '01:00-02:00', label: '1:00 AM - 2:00 AM' }
+                ]
+            };
+
+            // Get booked appointments for the specific doctor, date, and slot
+            const query = {
+                doctor: doctorId,
+                date: date,
+                status: { $in: ['pending', 'approved', 'confirmed'] } // Include all active appointments
+            };
+
+            // If slot is specified, filter by slot as well
+            if (slot) {
+                query.slot = slot;
+            }
+
+            const bookedAppointments = await Appoinment.find(query);
+            
+            // Extract booked time slots
+            const bookedTimeSlots = bookedAppointments.map(appointment => appointment.time);
+            
+            // Filter available slots based on slot type
+            let availableSlots = [];
+            if (slot && allTimeSlots[slot]) {
+                // If specific slot is requested, return only that slot's available times
+                availableSlots = allTimeSlots[slot].filter(timeSlot => 
+                    !bookedTimeSlots.includes(timeSlot.value)
+                );
+            } else {
+                // If no specific slot, return all available slots from all slots combined
+                availableSlots = [];
+                Object.values(allTimeSlots).forEach(slotTimes => {
+                    slotTimes.forEach(timeSlot => {
+                        if (!bookedTimeSlots.includes(timeSlot.value)) {
+                            availableSlots.push(timeSlot);
+                        }
+                    });
+                });
+            }
+
+            res.status(200).json({
+                success: true,
+                data: {
+                    availableSlots,
+                    bookedTimeSlots,
+                    totalBooked: bookedTimeSlots.length,
+                    date,
+                    doctorId,
+                    slot: slot || 'all'
+                },
+                message: 'Available time slots fetched successfully'
+            });
+        } catch (error) {
+            console.error('Error fetching available time slots:', error);
+            res.status(500).json({
+                success: false,
+                message: 'Failed to fetch available time slots',
+                error: error.message
+            });
+        }
+    },
+
     // Debug function to check all appointments
     debugAppointments: async (req, res) => {
         try {

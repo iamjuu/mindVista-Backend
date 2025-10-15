@@ -36,6 +36,9 @@ router.get('/doctors/admin/all', DoctorController.getAllDoctorsAdmin);
 // Approve doctor
 router.put('/doctors/approve/:id', DoctorController.approveDoctor);
 
+// Get doctor income
+router.get('/doctors/:id/income', DoctorController.getDoctorIncome);
+
 // *********************login doctor*********************
 // Doctor login
 router.post('/doctor/login', DoctorController.loginDoctor);
