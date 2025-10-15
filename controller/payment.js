@@ -1,5 +1,6 @@
 const Razorpay = require('razorpay');
 const crypto = require('crypto');
+const mongoose = require('mongoose');
 
 // Initialize Razorpay instance
 const razorpay = new Razorpay({
@@ -63,7 +64,8 @@ const verifyPayment = async (req, res) => {
       razorpay_order_id,
       razorpay_payment_id,
       razorpay_signature,
-      appointmentData
+      appointmentData,
+      amount
     } = req.body;
 
     // Validate required fields
@@ -85,14 +87,65 @@ const verifyPayment = async (req, res) => {
     const isAuthentic = expectedSignature === razorpay_signature;
 
     if (!isAuthentic) {
+      // Update appointment payment status to failed
+      if (appointmentData && appointmentData.appointmentId) {
+        // Validate appointmentId format
+        if (!mongoose.Types.ObjectId.isValid(appointmentData.appointmentId)) {
+          console.log('❌ Invalid appointmentId format:', appointmentData.appointmentId);
+        } else {
+          try {
+            const Appoinment = require('../models/appoiment');
+            const appointment = await Appoinment.findById(appointmentData.appointmentId);
+          
+          if (appointment) {
+            appointment.paymentStatus = 'failed';
+            appointment.payment = false;
+            await appointment.save();
+            
+            console.log('❌ Payment status updated to failed for appointment:', appointmentData.appointmentId);
+          }
+          } catch (updateError) {
+            console.error('❌ Error updating appointment payment status to failed:', updateError);
+          }
+        }
+      }
+      
       return res.status(400).json({
         success: false,
         message: 'Payment verification failed - Invalid signature'
       });
     }
 
-    // Here you can update your appointment status to confirmed
-    // For now, we'll just return success
+    // Update appointment payment status to completed
+    if (appointmentData && appointmentData.appointmentId) {
+      // Validate appointmentId format
+      if (!mongoose.Types.ObjectId.isValid(appointmentData.appointmentId)) {
+        console.log('❌ Invalid appointmentId format:', appointmentData.appointmentId);
+      } else {
+        try {
+          const Appoinment = require('../models/appoiment');
+          const appointment = await Appoinment.findById(appointmentData.appointmentId);
+        
+        if (appointment) {
+          appointment.paymentStatus = 'completed';
+          appointment.payment = true;
+          appointment.paymentCompletedAt = new Date();
+          if (amount) {
+            appointment.amount = amount;
+          }
+          await appointment.save();
+          
+          console.log('✅ Payment status updated to completed for appointment:', appointmentData.appointmentId);
+        } else {
+          console.log('⚠️ Appointment not found for ID:', appointmentData.appointmentId);
+        }
+        } catch (updateError) {
+          console.error('❌ Error updating appointment payment status:', updateError);
+          // Don't fail the payment verification if update fails
+        }
+      }
+    }
+
     res.status(200).json({
       success: true,
       message: 'Payment verified successfully',

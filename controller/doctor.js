@@ -85,7 +85,7 @@ module.exports = {
     createDoctor: async (req, res) => {
         console.log("hello")
         try {
-            const { name, email, specialization, phone, experience, patients, rating, available, qualification, designation, department, age, gender, address, bio, consultationFee } = req.body;
+            const { name, email, specialization, phone, experience, available, age, gender, address, bio } = req.body;
             console.log(req.body,'data gooted')
             
             // Validate required fields
@@ -156,23 +156,15 @@ module.exports = {
                 password: hashedPassword,
                 profilePicture: req.file.path, // Store the file path
                 isActive: false, // New doctors are inactive by default
-                patients: 0,
-                rating: 0
+         
             };
             
             // Add optional fields if provided
             if (email) doctorData.email = email.trim().toLowerCase();
-            if (qualification) doctorData.qualification = qualification.trim();
-            if (designation) doctorData.designation = designation.trim();
-            if (department) doctorData.department = department.trim();
             if (age) doctorData.age = parseInt(age);
             if (gender) doctorData.gender = gender;
             if (address) doctorData.address = address.trim();
-            if (bio) doctorData.bio = bio.trim();
-            if (consultationFee) doctorData.consultationFee = parseFloat(consultationFee);
-            if (patients !== undefined && patients !== '') doctorData.patients = parseInt(patients);
-            if (rating !== undefined && rating !== '') doctorData.rating = parseFloat(rating);
-            
+            if (bio) doctorData.bio = bio.trim();     
             // Create new doctor
             const newDoctor = new Doctor(doctorData);
             const savedDoctor = await newDoctor.save();

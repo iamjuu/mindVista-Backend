@@ -181,7 +181,8 @@ module.exports = {
                     receiptUploaded: receiptUploaded || true,
                     receiptFile: receiptFilePath,
                     payment: true, // Set payment to true since receipt is uploaded
-                    appointmentId: appointmentData.appointmentId || null
+                    appointmentId: appointmentData.appointmentId || null,
+                    amount: 500 // Default appointment amount
                 });
                 
                 await newAppointment.save();
@@ -239,7 +240,8 @@ module.exports = {
                     time,
                     date,
                     status: 'pending',
-                    paymentStatus: 'pending'
+                    paymentStatus: 'pending',
+                    amount: 0 // No payment yet for pending appointments
                 });
                 
                 await newAppointment.save();
@@ -643,14 +645,16 @@ module.exports = {
                 today: today,
                 appointmentDate: appointmentDate,
                 appointmentDateType: typeof appointmentDate,
-                isDateValid: appointmentDate >= today
+                isDateValid: appointmentDate >= today,
+                role: role
             });
             
-            // For development/testing: allow video calls on or after the appointment date
-            // For production: change this to strict same-day validation
-            // If doctor/admin, bypass date restriction
+            // For development/testing: allow video calls for all roles
+            // For production: enable strict date validation
             const isPrivileged = role === 'doctor' || role === 'admin';
-            if (!isPrivileged && appointmentDate < today) {
+            const ENABLE_DATE_VALIDATION = process.env.ENABLE_DATE_VALIDATION === 'true';
+            
+            if (ENABLE_DATE_VALIDATION && !isPrivileged && appointmentDate < today) {
                 console.log('❌ Date validation failed: appointment date is in the past');
                 return res.status(403).json({
                     success: false,
@@ -658,7 +662,7 @@ module.exports = {
                 });
             }
             
-            console.log('✅ Date validation passed');
+            console.log('✅ Date validation passed (or bypassed for development)');
 
             const appointmentDetails = {
                 id: appointment._id,
