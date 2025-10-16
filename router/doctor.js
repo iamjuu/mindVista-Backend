@@ -39,6 +39,12 @@ router.put('/doctors/approve/:id', DoctorController.approveDoctor);
 // Get doctor income
 router.get('/doctors/:id/income', DoctorController.getDoctorIncome);
 
+// Available slots endpoints
+router.post('/doctors/available-slots', DoctorController.createAvailableSlots);
+router.get('/doctors/:id/available-slots/:date', DoctorController.getAvailableSlots);
+router.put('/doctors/:id/available-slots/:date', DoctorController.updateAvailableSlots);
+router.delete('/doctors/:id/available-slots/:date', DoctorController.deleteAvailableSlots);
+
 // *********************login doctor*********************
 // Doctor login
 router.post('/doctor/login', DoctorController.loginDoctor);

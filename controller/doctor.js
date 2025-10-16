@@ -1,6 +1,7 @@
 const Doctor = require('../models/doctor');
 const Appointment = require('../models/appoiment');
 const { sendDoctorApprovalEmail } = require('../utils/mailer');
+const axios = require('axios');
 
 module.exports = {
     
@@ -627,6 +628,217 @@ module.exports = {
                 success: false, 
                 message: 'Error fetching doctor income', 
                 error: error.message 
+            });
+        }
+    }, 
+
+    // Available Slots Management
+    createAvailableSlots: async (req, res) => {
+        try {
+        
+            const { doctorId, date, slots } = req.body;
+            
+            // Debug logging
+            console.log('[createAvailableSlots] Received data:', {
+                doctorId,
+                date,
+                slots,
+                timestamp: new Date().toISOString()
+            });
+            
+            if (!doctorId || !date || !slots || !Array.isArray(slots)) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Missing required fields: doctorId, date, and slots array'
+                });
+            }
+
+            // Validate doctor exists
+            const doctor = await Doctor.findById(doctorId);
+            if (!doctor) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'Doctor not found'
+                });
+            }
+
+            // Normalize slots payload to expected shape
+            const normalizedSlots = Array.isArray(slots)
+                ? slots.map(s => ({
+                    startTime: s.startTime,
+                    endTime: s.endTime,
+                    isAvailable: s.isAvailable !== false
+                }))
+                : [];
+
+            // Update Map field via dynamic path to ensure persistence
+            await Doctor.findByIdAndUpdate(
+                doctorId,
+                { $set: { [`availableSlots.${date}`]: normalizedSlots } },
+                { new: true }
+            );
+
+            // Debug logging after save
+            console.log('[createAvailableSlots] Data saved successfully:', {
+                doctorId,
+                date,
+                slotsCount: normalizedSlots.length,
+                timestamp: new Date().toISOString()
+            });
+
+			// Optional webhook notification (non-blocking)
+			try {
+				const webhookUrl = process.env.SLOTS_UPDATED_WEBHOOK_URL;
+				if (webhookUrl) {
+					await axios.post(webhookUrl, {
+						event: 'doctor.slots.created',
+						payload: { doctorId, date, slots }
+					}, { timeout: 3000 });
+				}
+			} catch (notifyErr) {
+				console.warn('[createAvailableSlots] Webhook notify failed:', notifyErr.message);
+			}
+
+            console.log('data saved')
+            return res.status(201).json({
+                success: true,
+                message: 'Available slots created successfully',
+                data: { date, slots }
+            });
+        } catch (error) {
+            console.error('[createAvailableSlots] Error:', error);
+            return res.status(500).json({
+                success: false,
+                message: 'Error creating available slots',
+                error: error.message
+            });
+        }
+    },
+
+    getAvailableSlots: async (req, res) => {
+        try {
+            const { id, date } = req.params;
+            
+            // Debug logging
+            console.log('[getAvailableSlots] Request params:', {
+                doctorId: id,
+                date,
+                timestamp: new Date().toISOString()
+            });
+            
+            const doctor = await Doctor.findById(id);
+            if (!doctor) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'Doctor not found'
+                });
+            }
+
+            const availableSlots = doctor.availableSlots;
+            let slots = [];
+            if (availableSlots && typeof availableSlots.get === 'function') {
+                // Mongoose Map
+                slots = availableSlots.get(date) || [];
+            } else if (availableSlots && typeof availableSlots === 'object') {
+                // Plain object fallback
+                slots = availableSlots[date] || [];
+            }
+
+            // Debug logging
+            console.log('[getAvailableSlots] Retrieved data:', {
+                doctorId: id,
+                requestedDate: date,
+                foundSlots: slots.length,
+                allAvailableDates: availableSlots ? Object.keys(availableSlots) : [],
+                timestamp: new Date().toISOString()
+            });
+
+            return res.status(200).json({
+                success: true,
+                slots: slots,
+                date: date
+            });
+        } catch (error) {
+            console.error('[getAvailableSlots] Error:', error);
+            return res.status(500).json({
+                success: false,
+                message: 'Error fetching available slots',
+                error: error.message
+            });
+        }
+    },
+
+    updateAvailableSlots: async (req, res) => {
+        try {
+            const { id, date } = req.params;
+            const { slots } = req.body;
+            
+            if (!slots || !Array.isArray(slots)) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Slots array is required'
+                });
+            }
+
+            const doctor = await Doctor.findById(id);
+            if (!doctor) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'Doctor not found'
+                });
+            }
+
+            const existingSlots = doctor.availableSlots || {};
+            existingSlots[date] = slots;
+
+            await Doctor.findByIdAndUpdate(id, {
+                availableSlots: existingSlots
+            });
+
+            return res.status(200).json({
+                success: true,
+                message: 'Available slots updated successfully',
+                data: { date, slots }
+            });
+        } catch (error) {
+            console.error('[updateAvailableSlots] Error:', error);
+            return res.status(500).json({
+                success: false,
+                message: 'Error updating available slots',
+                error: error.message
+            });
+        }
+    },
+
+    deleteAvailableSlots: async (req, res) => {
+        try {
+            const { id, date } = req.params;
+            
+            const doctor = await Doctor.findById(id);
+            if (!doctor) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'Doctor not found'
+                });
+            }
+
+            const existingSlots = doctor.availableSlots || {};
+            delete existingSlots[date];
+
+            await Doctor.findByIdAndUpdate(id, {
+                availableSlots: existingSlots
+            });
+
+            return res.status(200).json({
+                success: true,
+                message: 'Available slots deleted successfully'
+            });
+        } catch (error) {
+            console.error('[deleteAvailableSlots] Error:', error);
+            return res.status(500).json({
+                success: false,
+                message: 'Error deleting available slots',
+                error: error.message
             });
         }
     }
