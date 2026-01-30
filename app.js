@@ -33,16 +33,16 @@ const VideoCallStatusRouter = require('./router/videoCallStatus');
 const ReviewRouter = require('./router/review');
 const DashboardRouter = require('./router/dashboard');
 
-app.use('/', NotificationRouter);
-app.use('/', ProfileRouter);
-app.use('/', AppoinmentRouter);
-app.use('/', DoctorRouter);
-app.use('/', RefifyUserRouter);
+app.use('/api', NotificationRouter);
+app.use('/api', ProfileRouter);
+app.use('/api', AppoinmentRouter);
+app.use('/api', DoctorRouter);
+app.use('/api', RefifyUserRouter);
 app.use('/api', PaymentRouter);
-app.use('/', RazorpayRouter);
-app.use('/', VideoCallLinkRouter);
-app.use('/', VideoCallStatusRouter);
-app.use('/', ReviewRouter);
+app.use('/api', RazorpayRouter);
+app.use('/api', VideoCallLinkRouter);
+app.use('/api', VideoCallStatusRouter);
+app.use('/api', ReviewRouter);
 app.use('/api/dashboard', DashboardRouter);
 
 // ----------------- HTTP + WS SERVER -----------------
