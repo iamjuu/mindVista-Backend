@@ -31,6 +31,9 @@ router.get('/appointments/today', AppointmentController.getTodayAppointments)
 // Get video call details by video call ID
 router.get('/video-call/:videoCallId/details', AppointmentController.getVideoCallDetails)
 
+// Get available time slots for a doctor on a specific date
+router.get('/available-slots', AppointmentController.getAvailableTimeSlots)
+
 // Debug endpoint to check all appointments
 router.get('/debug/appointments', AppointmentController.debugAppointments)
 

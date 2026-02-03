@@ -47,11 +47,18 @@ const DoctorSchema = new mongoose.Schema({
   }, // Store the image file path
   bio: String,
   
-  availableSlots: [{
-    day: String,
-    startTime: String,
-    endTime: String,
-  }],
+  availableSlots: {
+    type: Map,
+    of: [{
+      startTime: String,
+      endTime: String,
+      isAvailable: {
+        type: Boolean,
+        default: true
+      }
+    }],
+    default: {}
+  },
   
   // Authentication
   password: {

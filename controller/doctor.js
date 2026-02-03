@@ -1,5 +1,7 @@
 const Doctor = require('../models/doctor');
+const Appointment = require('../models/appoiment');
 const { sendDoctorApprovalEmail } = require('../utils/mailer');
+const axios = require('axios');
 
 module.exports = {
     
@@ -491,6 +493,352 @@ module.exports = {
                 success: false, 
                 message: 'Error approving doctor', 
                 error: error.message 
+            });
+        }
+    },
+
+    // Get doctor income
+    getDoctorIncome: async (req, res) => {
+        try {
+            const { id } = req.params;
+            
+            // Verify doctor exists
+            const doctor = await Doctor.findById(id);
+            if (!doctor || !doctor.isActive) {
+                return res.status(404).json({ 
+                    success: false, 
+                    message: 'Doctor not found' 
+                });
+            }
+
+            // Get current date ranges
+            const now = new Date();
+            const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            const startOfWeek = new Date(now);
+            startOfWeek.setDate(now.getDate() - now.getDay());
+            startOfWeek.setHours(0, 0, 0, 0);
+            
+            const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+            const startOfYear = new Date(now.getFullYear(), 0, 1);
+
+            // Previous periods for growth calculation
+            const previousDay = new Date(startOfDay);
+            previousDay.setDate(previousDay.getDate() - 1);
+            
+            const previousWeek = new Date(startOfWeek);
+            previousWeek.setDate(previousWeek.getDate() - 7);
+            
+            const previousMonth = new Date(startOfMonth);
+            previousMonth.setMonth(previousMonth.getMonth() - 1);
+            
+            const previousYear = new Date(startOfYear);
+            previousYear.setFullYear(previousYear.getFullYear() - 1);
+
+            // Helper function to calculate income for a date range
+            const calculateIncome = async (startDate, endDate) => {
+                const appointments = await Appointment.find({
+                    doctor: id,
+                    paymentStatus: 'completed',
+                    paymentCompletedAt: {
+                        $gte: startDate,
+                        $lt: endDate
+                    }
+                });
+                
+                return appointments.reduce((total, appointment) => total + (appointment.amount || 0), 0);
+            };
+
+            // Calculate current period incomes
+            const dailyIncome = await calculateIncome(startOfDay, new Date(startOfDay.getTime() + 24 * 60 * 60 * 1000));
+            const weeklyIncome = await calculateIncome(startOfWeek, new Date(startOfWeek.getTime() + 7 * 24 * 60 * 60 * 1000));
+            const monthlyIncome = await calculateIncome(startOfMonth, new Date(startOfMonth.getFullYear(), startOfMonth.getMonth() + 1, 1));
+            const yearlyIncome = await calculateIncome(startOfYear, new Date(startOfYear.getFullYear() + 1, 0, 1));
+
+            // Calculate previous period incomes for growth
+            const previousDailyIncome = await calculateIncome(previousDay, startOfDay);
+            const previousWeeklyIncome = await calculateIncome(previousWeek, startOfWeek);
+            const previousMonthlyIncome = await calculateIncome(previousMonth, startOfMonth);
+            const previousYearlyIncome = await calculateIncome(previousYear, startOfYear);
+
+            // Calculate growth percentages
+            const calculateGrowth = (current, previous) => {
+                if (previous === 0) return current > 0 ? 100 : 0;
+                return Math.round(((current - previous) / previous) * 100);
+            };
+
+            const dailyGrowth = calculateGrowth(dailyIncome, previousDailyIncome);
+            const weeklyGrowth = calculateGrowth(weeklyIncome, previousWeeklyIncome);
+            const monthlyGrowth = calculateGrowth(monthlyIncome, previousMonthlyIncome);
+            const yearlyGrowth = calculateGrowth(yearlyIncome, previousYearlyIncome);
+
+            // Generate weekly chart data (last 7 days)
+            const weeklyChart = [];
+            const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+            
+            for (let i = 6; i >= 0; i--) {
+                const dayStart = new Date(now);
+                dayStart.setDate(dayStart.getDate() - i);
+                dayStart.setHours(0, 0, 0, 0);
+                
+                const dayEnd = new Date(dayStart);
+                dayEnd.setHours(23, 59, 59, 999);
+                
+                const dayIncome = await calculateIncome(dayStart, dayEnd);
+                weeklyChart.push({
+                    name: dayNames[dayStart.getDay()],
+                    income: dayIncome
+                });
+            }
+
+            // Generate monthly chart data (last 12 months)
+            const monthlyChart = [];
+            const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            
+            for (let i = 11; i >= 0; i--) {
+                const monthStart = new Date(now.getFullYear(), now.getMonth() - i, 1);
+                const monthEnd = new Date(now.getFullYear(), now.getMonth() - i + 1, 1);
+                
+                const monthIncome = await calculateIncome(monthStart, monthEnd);
+                monthlyChart.push({
+                    name: monthNames[monthStart.getMonth()],
+                    income: monthIncome
+                });
+            }
+
+            const incomeData = {
+                daily: dailyIncome,
+                dailyGrowth: dailyGrowth,
+                weekly: weeklyIncome,
+                weeklyGrowth: weeklyGrowth,
+                monthly: monthlyIncome,
+                monthlyGrowth: monthlyGrowth,
+                yearly: yearlyIncome,
+                yearlyGrowth: yearlyGrowth,
+                weeklyChart: weeklyChart,
+                monthlyChart: monthlyChart
+            };
+            
+            return res.status(200).json({ 
+                success: true, 
+                incomeData 
+            });
+        } catch (error) {
+            console.error('[getDoctorIncome] Error:', error);
+            return res.status(500).json({ 
+                success: false, 
+                message: 'Error fetching doctor income', 
+                error: error.message 
+            });
+        }
+    }, 
+
+    // Available Slots Management
+    createAvailableSlots: async (req, res) => {
+        try {
+        
+            const { doctorId, date, slots } = req.body;
+            
+            // Debug logging
+            console.log('[createAvailableSlots] Received data:', {
+                doctorId,
+                date,
+                slots,
+                timestamp: new Date().toISOString()
+            });
+            
+            if (!doctorId || !date || !slots || !Array.isArray(slots)) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Missing required fields: doctorId, date, and slots array'
+                });
+            }
+
+            // Validate doctor exists
+            const doctor = await Doctor.findById(doctorId);
+            if (!doctor) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'Doctor not found'
+                });
+            }
+
+            // Normalize slots payload to expected shape
+            const normalizedSlots = Array.isArray(slots)
+                ? slots.map(s => ({
+                    startTime: s.startTime,
+                    endTime: s.endTime,
+                    isAvailable: s.isAvailable !== false
+                }))
+                : [];
+
+            // Update Map field via dynamic path to ensure persistence
+            await Doctor.findByIdAndUpdate(
+                doctorId,
+                { $set: { [`availableSlots.${date}`]: normalizedSlots } },
+                { new: true }
+            );
+
+            // Debug logging after save
+            console.log('[createAvailableSlots] Data saved successfully:', {
+                doctorId,
+                date,
+                slotsCount: normalizedSlots.length,
+                timestamp: new Date().toISOString()
+            });
+
+			// Optional webhook notification (non-blocking)
+			try {
+				const webhookUrl = process.env.SLOTS_UPDATED_WEBHOOK_URL;
+				if (webhookUrl) {
+					await axios.post(webhookUrl, {
+						event: 'doctor.slots.created',
+						payload: { doctorId, date, slots }
+					}, { timeout: 3000 });
+				}
+			} catch (notifyErr) {
+				console.warn('[createAvailableSlots] Webhook notify failed:', notifyErr.message);
+			}
+
+            console.log('data saved')
+            return res.status(201).json({
+                success: true,
+                message: 'Available slots created successfully',
+                data: { date, slots }
+            });
+        } catch (error) {
+            console.error('[createAvailableSlots] Error:', error);
+            return res.status(500).json({
+                success: false,
+                message: 'Error creating available slots',
+                error: error.message
+            });
+        }
+    },
+
+    getAvailableSlots: async (req, res) => {
+        try {
+            const { id, date } = req.params;
+            
+            // Debug logging
+            console.log('[getAvailableSlots] Request params:', {
+                doctorId: id,
+                date,
+                timestamp: new Date().toISOString()
+            });
+            
+            const doctor = await Doctor.findById(id);
+            if (!doctor) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'Doctor not found'
+                });
+            }
+
+            const availableSlots = doctor.availableSlots;
+            let slots = [];
+            if (availableSlots && typeof availableSlots.get === 'function') {
+                // Mongoose Map
+                slots = availableSlots.get(date) || [];
+            } else if (availableSlots && typeof availableSlots === 'object') {
+                // Plain object fallback
+                slots = availableSlots[date] || [];
+            }
+
+            // Debug logging
+            console.log('[getAvailableSlots] Retrieved data:', {
+                doctorId: id,
+                requestedDate: date,
+                foundSlots: slots.length,
+                allAvailableDates: availableSlots ? Object.keys(availableSlots) : [],
+                timestamp: new Date().toISOString()
+            });
+
+            return res.status(200).json({
+                success: true,
+                slots: slots,
+                date: date
+            });
+        } catch (error) {
+            console.error('[getAvailableSlots] Error:', error);
+            return res.status(500).json({
+                success: false,
+                message: 'Error fetching available slots',
+                error: error.message
+            });
+        }
+    },
+
+    updateAvailableSlots: async (req, res) => {
+        try {
+            const { id, date } = req.params;
+            const { slots } = req.body;
+            
+            if (!slots || !Array.isArray(slots)) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Slots array is required'
+                });
+            }
+
+            const doctor = await Doctor.findById(id);
+            if (!doctor) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'Doctor not found'
+                });
+            }
+
+            const existingSlots = doctor.availableSlots || {};
+            existingSlots[date] = slots;
+
+            await Doctor.findByIdAndUpdate(id, {
+                availableSlots: existingSlots
+            });
+
+            return res.status(200).json({
+                success: true,
+                message: 'Available slots updated successfully',
+                data: { date, slots }
+            });
+        } catch (error) {
+            console.error('[updateAvailableSlots] Error:', error);
+            return res.status(500).json({
+                success: false,
+                message: 'Error updating available slots',
+                error: error.message
+            });
+        }
+    },
+
+    deleteAvailableSlots: async (req, res) => {
+        try {
+            const { id, date } = req.params;
+            
+            const doctor = await Doctor.findById(id);
+            if (!doctor) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'Doctor not found'
+                });
+            }
+
+            const existingSlots = doctor.availableSlots || {};
+            delete existingSlots[date];
+
+            await Doctor.findByIdAndUpdate(id, {
+                availableSlots: existingSlots
+            });
+
+            return res.status(200).json({
+                success: true,
+                message: 'Available slots deleted successfully'
+            });
+        } catch (error) {
+            console.error('[deleteAvailableSlots] Error:', error);
+            return res.status(500).json({
+                success: false,
+                message: 'Error deleting available slots',
+                error: error.message
             });
         }
     }
