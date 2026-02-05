@@ -13,10 +13,15 @@ const PORT = process.env.PORT || 3000;
 
 // ----------------- MIDDLEWARE -----------------
 app.use(cors({ 
-  origin: ['http://localhost:5173', 'http://localhost:5174'], 
-  methods: ['GET','POST','PUT','DELETE'], 
-  allowedHeaders: ['Content-Type'] 
+  origin: [
+    'http://localhost:5173',
+    'http://localhost:5174',
+    'https://mind-vista-psychology-web-app-dvb3.vercel.app'
+  ],
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  allowedHeaders: ['Content-Type']
 }));
+
 app.use(bodyParser.json());
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
