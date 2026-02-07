@@ -5,7 +5,11 @@ const DatabaseConnection = async () => {
   try {
     mongoose.set('strictQuery', false);
     
-    await mongoose.connect('mongodb://127.0.0.1:27017/mindVista', {
+    const uri = process.env.MONGODB_URI;
+    if (!uri) {
+      throw new Error('MONGODB_URI is not defined in .env');
+    }
+    await mongoose.connect(uri, {
       useNewUrlParser: true,
       useUnifiedTopology: true,
       serverSelectionTimeoutMS: 5000, // Fail fast if can't connect
@@ -25,7 +29,7 @@ const DatabaseConnection = async () => {
     
   } catch (err) {
     console.error('❌ MongoDB connection error:', err.message);
-    console.error('💡 Make sure MongoDB is running on port 27017');
+    console.error('💡 Check MONGODB_URI in .env and network access in MongoDB Atlas');
     process.exit(1);
   }
 };
