@@ -1,5 +1,6 @@
-<<<<<<< HEAD
+
 const { Doctor, Appointment, Profile, Review } = require('../models');
+const Register = require('../models/register');
 
 // Get dashboard statistics
 exports.getDashboardStats = async (req, res) => {
@@ -465,27 +466,16 @@ exports.getDoctorsWorkProgress = async (req, res) => {
     });
   }
 };
-=======
-const Register = require('../models/register')
-module.exports={
-userList : async(req,res) =>{
-    try {
-        console.log('zdfghgf');
-        
-        const Data = await Register.find()
 
-        console.log(Data,'data gotted');
-        
-// In your controller
-return res.status(200).json({message: 'success', Data: Data}); 
-   } catch (error) {
-     console.log(error,'erro in dashborad');
-        
-    }
+exports.userList = async (req, res) => {
+  try {
+    console.log('zdfghgf');
+    const Data = await Register.find();
+    console.log(Data, 'data gotted');
+    return res.status(200).json({ message: 'success', Data: Data });
+  } catch (error) {
+    console.log(error, 'erro in dashborad');
+  }
+};
 
 
-
-}
-
-}
->>>>>>> 4e60bb9 ( dashboard set)
