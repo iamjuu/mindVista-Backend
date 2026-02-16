@@ -25,6 +25,20 @@ app.use(cors({
 app.use(bodyParser.json());
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
+// Ensure DB is connected before any API route (removes Mongoose buffering / timeout)
+app.use(async (req, res, next) => {
+  try {
+    await DatabaseConnection();
+    next();
+  } catch (err) {
+    res.status(503).json({
+      success: false,
+      message: 'Database unavailable',
+      error: err.message,
+    });
+  }
+});
+
 // ----------------- ROUTERS -----------------
 const NotificationRouter = require('./router/notification');
 const ProfileRouter = require('./router/profle');
