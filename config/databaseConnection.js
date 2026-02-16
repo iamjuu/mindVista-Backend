@@ -28,7 +28,11 @@ const DatabaseConnection = async () => {
   } catch (err) {
     console.error('❌ MongoDB connection error:', err.message);
     console.error('💡 Check MONGODB_URI in .env and network access in MongoDB Atlas');
-    process.exit(1);
+    // On Vercel (serverless), do not exit process—let the request fail so next invocation can retry
+    if (!process.env.VERCEL) {
+      process.exit(1);
+    }
+    throw err;
   }
 };
 

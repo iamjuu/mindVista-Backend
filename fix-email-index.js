@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 const Doctor = require('./models/doctor');
 
 // Database connection - using same connection string as the app
-const dbURI = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/mindVista';
+const dbURI = process.env.MONGODB_URI 
 
 async function fixEmailIndex() {
     try {

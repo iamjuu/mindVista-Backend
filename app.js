@@ -211,13 +211,10 @@ app.get('/health', (req, res) => {
   });
 });
 
-// ----------------- START SERVER -----------------
+// ----------------- START SERVER (local only; Vercel uses the exported app) -----------------
 const startServer = async () => {
   try {
-    // Connect to database first (it's a function, not a class)
     await DatabaseConnection();
-    
-    // Then start the server
     server.listen(PORT, () => {
       console.log(`🚀 Server running on http://localhost:${PORT}`);
       console.log(`📡 WebSocket signaling server ready on ws://localhost:${PORT}`);
@@ -228,14 +225,25 @@ const startServer = async () => {
   }
 };
 
-startServer();
+// On Vercel: do NOT call listen(); Vercel runs the app as serverless. Only start server locally.
+if (!process.env.VERCEL) {
+  startServer();
+} else {
+  // Optional: start DB connection when serverless function loads (connection is reused)
+  DatabaseConnection().catch((err) => console.error('❌ MongoDB connection (Vercel):', err.message));
+}
 
-// Graceful shutdown
-process.on('SIGINT', async () => {
-  console.log('\n⚠️  Shutting down gracefully...');
-  await mongoose.disconnect();
-  server.close(() => {
-    console.log('👋 Server closed');
-    process.exit(0);
+// Graceful shutdown (local only)
+if (!process.env.VERCEL) {
+  process.on('SIGINT', async () => {
+    console.log('\n⚠️  Shutting down gracefully...');
+    await mongoose.disconnect();
+    server.close(() => {
+      console.log('👋 Server closed');
+      process.exit(0);
+    });
   });
-});
+}
+
+// Export the Express app for Vercel serverless (no WebSocket on Vercel—only REST API).
+module.exports = app;

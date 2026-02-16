@@ -1,8 +1,12 @@
 const multer = require('multer');
 const fs = require('fs');
 const path = require('path');
+const os = require('os');
 const cloudinary = require('cloudinary').v2;
 const { CloudinaryStorage } = require('multer-storage-cloudinary');
+
+// Vercel serverless: filesystem is read-only except /tmp — use /tmp for any disk uploads
+const isVercel = process.env.VERCEL === '1' || process.env.VERCEL === 'true';
 
 // Cloudinary config from env (never put API secret in code)
 const useCloudinary = !!(
@@ -20,11 +24,20 @@ if (useCloudinary) {
 }
 
 // Base uploads directory (used when Cloudinary is not configured)
-const baseUploadsDir = path.join(__dirname, '../uploads');
+// On Vercel use /tmp so mkdirSync doesn't fail (read-only filesystem elsewhere)
+const baseUploadsDir = isVercel
+  ? path.join(os.tmpdir(), 'mindvista-uploads')
+  : path.join(__dirname, '../uploads');
 
-// Ensure base uploads directory exists
+// Ensure base uploads directory exists (only create if writable; on Vercel /tmp is writable)
 if (!fs.existsSync(baseUploadsDir)) {
-  fs.mkdirSync(baseUploadsDir, { recursive: true });
+  try {
+    fs.mkdirSync(baseUploadsDir, { recursive: true });
+  } catch (err) {
+    if (!isVercel) throw err;
+    // On Vercel we should have used /tmp; if still failing, avoid crashing
+    console.warn('multer: could not create baseUploadsDir:', err.message);
+  }
 }
 
 // Multer configuration for different upload types
