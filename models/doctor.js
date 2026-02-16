@@ -94,10 +94,8 @@ DoctorSchema.pre('save', function(next) {
   next();
 });
 
-// Index for better query performance
+// Index for better query performance (phone/email already have unique index via schema)
 DoctorSchema.index({ specialization: 1, available: 1 });
-DoctorSchema.index({ phone: 1 });
-DoctorSchema.index({ email: 1 });
 
 const Doctor = mongoose.model('Doctor', DoctorSchema);
 
