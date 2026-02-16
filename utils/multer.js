@@ -1,8 +1,25 @@
 const multer = require('multer');
 const fs = require('fs');
 const path = require('path');
+const cloudinary = require('cloudinary').v2;
+const { CloudinaryStorage } = require('multer-storage-cloudinary');
 
-// Base uploads directory
+// Cloudinary config from env (never put API secret in code)
+const useCloudinary = !!(
+  process.env.CLOUDINARY_CLOUD_NAME &&
+  process.env.CLOUDINARY_API_KEY &&
+  process.env.CLOUDINARY_API_SECRET
+);
+
+if (useCloudinary) {
+  cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET
+  });
+}
+
+// Base uploads directory (used when Cloudinary is not configured)
 const baseUploadsDir = path.join(__dirname, '../uploads');
 
 // Ensure base uploads directory exists
@@ -82,6 +99,41 @@ const multerConfig = {
   }
 };
 
+// Cloudinary folder names per upload type
+const cloudinaryFolders = {
+  doctor: 'mindvista/doctors',
+  profile: 'mindvista/profiles',
+  document: 'mindvista/documents'
+};
+
+function getStorage(type) {
+  const config = multerConfig[type];
+  const folder = cloudinaryFolders[type];
+
+  if (useCloudinary) {
+    const allowedFormats = type === 'document'
+      ? ['jpg', 'jpeg', 'png', 'pdf', 'doc', 'docx']
+      : ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+    return new CloudinaryStorage({
+      cloudinary,
+      params: {
+        folder,
+        allowed_formats: allowedFormats,
+        resource_type: 'auto'
+      }
+    });
+  }
+
+  // Fallback: disk storage
+  if (!fs.existsSync(config.destination)) {
+    fs.mkdirSync(config.destination, { recursive: true });
+  }
+  return multer.diskStorage({
+    destination: (req, file, cb) => cb(null, config.destination),
+    filename: (req, file, cb) => cb(null, config.filename(req, file))
+  });
+}
+
 // Create multer instances for different upload types
 const createMulterInstance = (type) => {
   const config = multerConfig[type];
@@ -90,22 +142,10 @@ const createMulterInstance = (type) => {
     throw new Error(`Unknown upload type: ${type}`);
   }
 
-  // Ensure destination directory exists
-  if (!fs.existsSync(config.destination)) {
-    fs.mkdirSync(config.destination, { recursive: true });
-  }
-
-  const storage = multer.diskStorage({
-    destination: (req, file, cb) => {
-      cb(null, config.destination);
-    },
-    filename: (req, file, cb) => {
-      cb(null, config.filename(req, file));
-    }
-  });
+  const storage = getStorage(type);
 
   return multer({
-    storage: storage,
+    storage,
     limits: config.limits,
     fileFilter: config.fileFilter
   });
@@ -140,6 +180,7 @@ const handleMulterError = (error, req, res, next) => {
 };
 
 // Export specific upload instances
+// When Cloudinary is used, req.file.path is the image URL; when not, it's the local file path.
 module.exports = {
   // Doctor upload (single image)
   doctorUpload: createMulterInstance('doctor').single('image'),
@@ -156,7 +197,10 @@ module.exports = {
   // Configuration for custom usage
   createMulterInstance,
   
-  // Get upload paths
+  // True when uploads go to Cloudinary (credentials in .env)
+  useCloudinary,
+  
+  // Get upload paths (local paths when not using Cloudinary)
   getUploadPaths: () => ({
     doctors: multerConfig.doctor.destination,
     profiles: multerConfig.profile.destination,
