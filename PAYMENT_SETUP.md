@@ -34,7 +34,7 @@ Server runs on port 3000
 The frontend is configured with the test key: `rzp_test_R6TXpHwdckbvvZ`
 
 ### 2. API Endpoints
-Frontend calls backend at: `http://localhost:3000/api/`
+Frontend calls backend at: `https://mind-vista-backend.vercel.app/api/`
 
 ### 3. Payment Flow
 1. User fills registration form
@@ -60,7 +60,7 @@ Frontend calls backend at: `http://localhost:3000/api/`
 1. **Test Mode**: Currently using Razorpay test keys
 2. **Amount**: Fixed at ₹500 (50000 paise) for consultation
 3. **Currency**: INR only
-4. **CORS**: Backend configured to allow requests from `http://localhost:5173`
+4. **CORS**: Backend configured to allow requests from `https://mind-vista-psychology-web-app-dvb3.vercel.app`
 
 ## Production Setup
 

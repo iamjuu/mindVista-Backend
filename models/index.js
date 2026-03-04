@@ -4,13 +4,15 @@ const Appointment = require('./appoiment');
 const Profile = require('./profile');
 const Notification = require('./notification');
 const Review = require('./review');
+const Note = require('./note');
 
 module.exports = {
   Doctor,
   Appointment,
   Profile,
   Notification,
-  Review
+  Review,
+  Note
 };
 
 

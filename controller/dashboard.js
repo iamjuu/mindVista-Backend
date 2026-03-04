@@ -1,4 +1,4 @@
-const { Doctor, Appointment, Profile, Review } = require('../models');
+const { Doctor, Appointment, Profile, Review, Note } = require('../models');
 
 // Get dashboard statistics
 exports.getDashboardStats = async (req, res) => {
@@ -460,6 +460,139 @@ exports.getDoctorsWorkProgress = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to fetch doctors work progress',
+      error: error.message
+    });
+  }
+};
+
+// ==================== DASHBOARD NOTES ====================
+
+// Get all notes
+exports.getNotes = async (req, res) => {
+  try {
+    const notes = await Note.find()
+      .sort({ createdAt: -1 })
+      .lean();
+
+    const formattedNotes = notes.map((note) => ({
+      id: note._id,
+      title: note.title,
+      description: note.description,
+      completed: note.completed,
+      tags: note.tags || []
+    }));
+
+    res.status(200).json({
+      success: true,
+      data: formattedNotes
+    });
+  } catch (error) {
+    console.error('Error fetching notes:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch notes',
+      error: error.message
+    });
+  }
+};
+
+// Create a new note
+exports.createNote = async (req, res) => {
+  try {
+    const { title, description, tags } = req.body;
+
+    if (!title || !description) {
+      return res.status(400).json({
+        success: false,
+        message: 'Title and description are required'
+      });
+    }
+
+    const note = await Note.create({
+      title: title.trim(),
+      description: description.trim(),
+      tags: Array.isArray(tags) ? tags : [],
+      completed: false
+    });
+
+    res.status(201).json({
+      success: true,
+      data: {
+        id: note._id,
+        title: note.title,
+        description: note.description,
+        completed: note.completed,
+        tags: note.tags
+      }
+    });
+  } catch (error) {
+    console.error('Error creating note:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to create note',
+      error: error.message
+    });
+  }
+};
+
+// Toggle note completion
+exports.toggleNoteCompletion = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const note = await Note.findById(id);
+    if (!note) {
+      return res.status(404).json({
+        success: false,
+        message: 'Note not found'
+      });
+    }
+
+    note.completed = !note.completed;
+    await note.save();
+
+    res.status(200).json({
+      success: true,
+      data: {
+        id: note._id,
+        title: note.title,
+        description: note.description,
+        completed: note.completed,
+        tags: note.tags
+      }
+    });
+  } catch (error) {
+    console.error('Error toggling note:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to update note',
+      error: error.message
+    });
+  }
+};
+
+// Delete a note
+exports.deleteNote = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const note = await Note.findByIdAndDelete(id);
+    if (!note) {
+      return res.status(404).json({
+        success: false,
+        message: 'Note not found'
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Note deleted successfully'
+    });
+  } catch (error) {
+    console.error('Error deleting note:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to delete note',
       error: error.message
     });
   }

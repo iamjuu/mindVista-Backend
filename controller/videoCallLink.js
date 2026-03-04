@@ -50,7 +50,7 @@ module.exports = {
     generateSimpleLink: (req, res) => {
         try {
             const uniqueId = uuidv4();
-            const baseUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+            const baseUrl = process.env.FRONTEND_URL || 'https://mind-vista-psychology-web-app-dvb3.vercel.app';
             const videoCallLink = `${baseUrl}/video-call/${uniqueId}`;
             
             res.status(200).json({

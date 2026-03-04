@@ -23,5 +23,11 @@ router.get('/work-hours', dashboardController.getWorkHourAnalysis);
 // Get doctors work progress
 router.get('/doctors-progress', dashboardController.getDoctorsWorkProgress);
 
+// Dashboard notes
+router.get('/notes', dashboardController.getNotes);
+router.post('/notes', dashboardController.createNote);
+router.put('/notes/:id/toggle', dashboardController.toggleNoteCompletion);
+router.delete('/notes/:id', dashboardController.deleteNote);
+
 module.exports = router;
 

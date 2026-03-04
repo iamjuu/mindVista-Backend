@@ -37,7 +37,7 @@ async function testVideoCall() {
             // Test the video call details endpoint
             const axios = require('axios');
             try {
-                const response = await axios.get(`http://localhost:3000/video-call/${firstAppointment.videoCallId}/details`);
+                const response = await axios.get(`https://mind-vista-backend.vercel.app/video-call/${firstAppointment.videoCallId}/details`);
                 console.log('✅ Video call endpoint response:', response.data);
             } catch (error) {
                 console.log('❌ Video call endpoint error:', error.response?.data || error.message);
