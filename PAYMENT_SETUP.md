@@ -10,8 +10,8 @@ npm install razorpay
 ### 2. Environment Variables
 Create a `.env` file in the backend root directory with:
 ```env
-RAZORPAY_KEY_ID=rzp_test_R6TXpHwdckbvvZ
-RAZORPAY_KEY_SECRET=CLOIqvgZbUfP86lysVma5Nzn
+RAZORPAY_KEY_ID=rzp_test_SN3KWXr3ClAEo8
+RAZORPAY_KEY_SECRET=fMMymb6Rx0859K1JILp9B4dN
 ```
 
 ### 3. Payment Endpoints

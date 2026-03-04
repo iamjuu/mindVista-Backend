@@ -4,8 +4,8 @@ const mongoose = require('mongoose');
 
 // Initialize Razorpay instance
 const razorpay = new Razorpay({
-  key_id: process.env.RAZORPAY_KEY_ID || 'rzp_test_R6TXpHwdckbvvZ',
-  key_secret: process.env.RAZORPAY_KEY_SECRET || 'CLOIqvgZbUfP86lysVma5Nzn'
+  key_id: process.env.RAZORPAY_KEY_ID || 'rzp_test_SN3KWXr3ClAEo8',
+  key_secret: process.env.RAZORPAY_KEY_SECRET || 'fMMymb6Rx0859K1JILp9B4dN'
 });
 
 // Create Razorpay order
@@ -79,7 +79,7 @@ const verifyPayment = async (req, res) => {
     // Create signature for verification
     const body = razorpay_order_id + "|" + razorpay_payment_id;
          const expectedSignature = crypto
-       .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET || 'CLOIqvgZbUfP86lysVma5Nzn')
+       .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET || 'fMMymb6Rx0859K1JILp9B4dN')
        .update(body.toString())
        .digest("hex");
 
