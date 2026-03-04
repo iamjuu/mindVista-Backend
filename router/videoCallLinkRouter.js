@@ -128,14 +128,26 @@ router.post('/video-call/:videoCallId/join', async (req, res) => {
   }
 });
 
+// Reset/clear room (for testing/cleanup)
+router.delete('/video-call/:videoCallId/room', async (req, res) => {
+  try {
+    const { videoCallId } = req.params;
+    await VideoCallRoom.deleteOne({ videoCallId });
+    res.json({ success: true, message: 'Room cleared' });
+  } catch (error) {
+    console.error('Clear room error:', error);
+    res.status(500).json({ success: false, message: 'Failed to clear room' });
+  }
+});
+
 // Optional: leave room (cleanup peer ID)
 router.post('/video-call/:videoCallId/leave', async (req, res) => {
   try {
     const { videoCallId } = req.params;
-    const { role } = req.body;
+    const { role, peerId } = req.body;
 
-    if (!videoCallId || !role) {
-      return res.status(400).json({ success: false, message: 'Missing videoCallId or role' });
+    if (!videoCallId || !peerId) {
+      return res.status(400).json({ success: false, message: 'Missing videoCallId or peerId' });
     }
 
     if (role === 'doctor') {
