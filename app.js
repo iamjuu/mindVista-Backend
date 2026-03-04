@@ -15,6 +15,8 @@ const PORT = process.env.PORT || 3000;
 app.use(cors({ 
   origin: [
     'https://mind-vista-psychology-web-app-dvb3.vercel.app',
+    // 'http://localhost:5173',
+    // 'http://localhost:5174',
   ],
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   allowedHeaders: ['Content-Type']

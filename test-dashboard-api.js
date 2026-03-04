@@ -10,6 +10,7 @@
 const http = require('http');
 
 const BASE_URL = 'https://mind-vista-backend.vercel.app';
+// const BASE_URL = 'http://localhost:3000';  // for local dev
 const tests = [];
 let passedTests = 0;
 let failedTests = 0;
