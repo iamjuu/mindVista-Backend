@@ -76,26 +76,46 @@ router.post('/video-call/:videoCallId/join', async (req, res) => {
       });
     }
 
-    const room = await VideoCallRoom.findOneAndUpdate(
-      { videoCallId },
-      {
-        $set: {
-          [role === 'doctor' ? 'doctorPeerId' : 'patientPeerId']: peerId,
-          updatedAt: new Date()
-        }
-      },
-      { new: true, upsert: true }
-    );
+    let room;
+    if (role === 'doctor') {
+      // Doctor joins - set doctorPeerId
+      room = await VideoCallRoom.findOneAndUpdate(
+        { videoCallId },
+        {
+          $set: { doctorPeerId: peerId, updatedAt: new Date() }
+        },
+        { new: true, upsert: true }
+      );
+    } else {
+      // Patient joins - add to patientPeerIds array
+      room = await VideoCallRoom.findOneAndUpdate(
+        { videoCallId },
+        {
+          $addToSet: { patientPeerIds: peerId },
+          $set: { updatedAt: new Date() }
+        },
+        { new: true, upsert: true }
+      );
+    }
 
-    const otherRole = role === 'doctor' ? 'patient' : 'doctor';
-    const otherPeerId = room[`${otherRole}PeerId`];
+    // Return all other peer IDs to call
+    const otherPeerIds = [];
+    if (role === 'doctor') {
+      // Doctor should call all patients
+      otherPeerIds.push(...(room.patientPeerIds || []));
+    } else {
+      // Patient should call doctor and other patients
+      if (room.doctorPeerId) otherPeerIds.push(room.doctorPeerId);
+      const otherPatients = (room.patientPeerIds || []).filter(id => id !== peerId);
+      otherPeerIds.push(...otherPatients);
+    }
 
     res.json({
       success: true,
       data: {
         peerId,
-        otherPeerId: otherPeerId || null,
-        shouldCall: !!otherPeerId  // true if other person is waiting - we should call them
+        otherPeerIds,
+        shouldCall: otherPeerIds.length > 0
       }
     });
   } catch (error) {
@@ -118,10 +138,17 @@ router.post('/video-call/:videoCallId/leave', async (req, res) => {
       return res.status(400).json({ success: false, message: 'Missing videoCallId or role' });
     }
 
-    await VideoCallRoom.findOneAndUpdate(
-      { videoCallId },
-      { $set: { [role === 'doctor' ? 'doctorPeerId' : 'patientPeerId']: null, updatedAt: new Date() } }
-    );
+    if (role === 'doctor') {
+      await VideoCallRoom.findOneAndUpdate(
+        { videoCallId },
+        { $set: { doctorPeerId: null, updatedAt: new Date() } }
+      );
+    } else {
+      await VideoCallRoom.findOneAndUpdate(
+        { videoCallId },
+        { $pull: { patientPeerIds: req.body.peerId }, $set: { updatedAt: new Date() } }
+      );
+    }
 
     res.json({ success: true });
   } catch (error) {
