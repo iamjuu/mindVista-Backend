@@ -10,8 +10,10 @@ EMAIL_USER=your_email@gmail.com
 EMAIL_PASS=your_app_password_here
 
 # Backend URL (for internal API calls)
+# For production:
 BACKEND_URL=https://mind-vista-backend.vercel.app
-# BACKEND_URL=http://localhost:5000  # for local dev
+# For local development:
+# BACKEND_URL=http://localhost:3000
 ```
 
 ## Gmail Setup Instructions

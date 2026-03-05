@@ -1,8 +1,9 @@
+require('dotenv').config();
 const mongoose = require('mongoose');
 const Appoinment = require('./models/appoiment');
 
-// Connect to MongoDB
-mongoose.connect('mongodb://localhost:27017/mindvista', {
+// Connect to MongoDB using environment variable
+mongoose.connect(process.env.MONGODB_URI, {
     useNewUrlParser: true,
     useUnifiedTopology: true
 });
@@ -37,8 +38,8 @@ async function testVideoCall() {
             // Test the video call details endpoint
             const axios = require('axios');
             try {
-                // const response = await axios.get(`http://localhost:3000/video-call/${firstAppointment.videoCallId}/details`);  // for local dev
-                const response = await axios.get(`https://mind-vista-backend.vercel.app/video-call/${firstAppointment.videoCallId}/details`);
+                const backendUrl = process.env.BACKEND_URL;
+                const response = await axios.get(`${backendUrl}/video-call/${firstAppointment.videoCallId}/details`);
                 console.log('✅ Video call endpoint response:', response.data);
             } catch (error) {
                 console.log('❌ Video call endpoint error:', error.response?.data || error.message);

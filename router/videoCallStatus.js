@@ -15,14 +15,13 @@ router.get('/video-call-health', (req, res) => {
             ports: {
                 backend: process.env.PORT || 3000,
                 signaling: process.env.SIGNALING_PORT || 8080,
-                // frontend: process.env.FRONTEND_URL || 'http://localhost:5173',  // for local dev
-                frontend: process.env.FRONTEND_URL || 'https://mind-vista-psychology-web-app-dvb3.vercel.app'
+                frontend: process.env.FRONTEND_URL
             }
         };
 
         // Check if signaling server is accessible
         const WebSocket = require('ws');
-        const signalingUrl = `ws://localhost:${process.env.SIGNALING_PORT || 8080}/signaling`;
+        const signalingUrl = process.env.SIGNALING_SERVER_URL;
         
         try {
             const ws = new WebSocket(signalingUrl);
@@ -93,8 +92,7 @@ router.get('/video-call/:videoCallId/status', async (req, res) => {
                 status: 'active',
                 participants: [],
                 connectionInfo: {
-                    signalingServer: 'wss://mind-vista-backend.vercel.app/signaling',
-                    // signalingServer: 'ws://localhost:8080/signaling',  // for local dev
+                    signalingServer: process.env.SIGNALING_SERVER_URL,
                     stunServers: [
                         'stun:stun.l.google.com:19302',
                         'stun:stun1.l.google.com:19302'

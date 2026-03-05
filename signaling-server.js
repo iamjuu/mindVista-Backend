@@ -295,19 +295,9 @@ function handleChatMessage(roomId, fromUserId, data) {
 
 // Start server
 const PORT = process.env.SIGNALING_PORT || 8080;
-server.listen(PORT, () => {
-    console.log(`🎯 WebRTC Signaling Server running on port ${PORT}`);
-    console.log(`🔗 WebSocket endpoint: ws://localhost:${PORT}/signaling`);
-});
 
-// Graceful shutdown
-process.on('SIGTERM', () => {
-    console.log('🛑 Shutting down signaling server...');
-    server.close(() => {
-        console.log('✅ Signaling server closed');
-        process.exit(0);
-    });
-});
+
+
 
 module.exports = { server, wss };
 

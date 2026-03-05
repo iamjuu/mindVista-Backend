@@ -1,6 +1,7 @@
 const Appoinment = require('../models/appoiment')
 const { sendApprovalEmail, sendDeclineEmail, sendApprovalEmailWithVideoCall } = require('../utils/mailer')
 const { generateVideoCallLink } = require('../utils/videoCall')
+const { sendMultiChannelNotification } = require('../utils/messaging')
 
 module.exports = {
     // Get all appointments
@@ -317,11 +318,17 @@ module.exports = {
             appointment.videoCallGenerated = true;
             await appointment.save();
             
-            // Send approval email with video call link
+            // Send approval notifications via Email, WhatsApp, and SMS
             try {
                 const patientVideoCallLink = `${videoCallResult.videoCallLink}?role=patient`;
                 const doctorVideoCallLink = `${videoCallResult.videoCallLink}?role=doctor`;
                 
+                console.log('\n🔔 Sending multi-channel notifications...');
+                console.log('📧 Email:', appointment.email);
+                console.log('📱 Phone:', appointment.phone);
+                console.log('🎥 Video Link:', patientVideoCallLink);
+                
+                // Send Email (existing functionality)
                 const emailResult = await sendApprovalEmailWithVideoCall(
                     appointment.email,
                     appointment.name,
@@ -338,9 +345,37 @@ module.exports = {
                 } else {
                     console.error('❌ Failed to send approval email:', emailResult.error);
                 }
-            } catch (emailError) {
-                console.error('❌ Error sending approval email:', emailError);
-                // Don't fail the appointment approval if email fails
+                
+                // Send WhatsApp and SMS notifications (new functionality)
+                if (appointment.phone) {
+                    const multiChannelResult = await sendMultiChannelNotification(
+                        appointment.email,
+                        appointment.phone,
+                        appointment.name,
+                        appointment.doctor?.name || 'Doctor',
+                        appointment.date,
+                        appointment.time,
+                        patientVideoCallLink
+                    );
+                    
+                    if (multiChannelResult.whatsapp.success) {
+                        console.log('✅ WhatsApp notification prepared:', multiChannelResult.whatsapp.whatsappURL);
+                    } else {
+                        console.warn('⚠️ WhatsApp notification failed:', multiChannelResult.whatsapp.error);
+                    }
+                    
+                    if (multiChannelResult.sms.success) {
+                        console.log('✅ SMS sent successfully via', multiChannelResult.sms.provider);
+                    } else {
+                        console.warn('⚠️ SMS notification failed:', multiChannelResult.sms.error);
+                    }
+                } else {
+                    console.warn('⚠️ No phone number available for WhatsApp/SMS notifications');
+                }
+                
+            } catch (notificationError) {
+                console.error('❌ Error sending notifications:', notificationError);
+                // Don't fail the appointment approval if notifications fail
             }
             
             // Transform the data to match frontend expectations
@@ -746,13 +781,15 @@ module.exports = {
             
             // Send email with video call link
             try {
+                const patientVideoCallLink = `${videoCallResult.videoCallLink}?role=patient`;
+                
                 const emailResult = await sendApprovalEmailWithVideoCall(
                     appointment.email,
                     appointment.name,
                     appointment.doctor?.name || 'Doctor',
                     appointment.date,
                     appointment.time,
-                    `${videoCallResult.videoCallLink}?role=patient`
+                    patientVideoCallLink
                 );
                 
                 if (emailResult.success) {
@@ -760,9 +797,31 @@ module.exports = {
                 } else {
                     console.error('❌ Failed to send video call email:', emailResult.error);
                 }
-            } catch (emailError) {
-                console.error('❌ Error sending video call email:', emailError);
-                // Don't fail the video call generation if email fails
+                
+                // Send WhatsApp and SMS notifications
+                if (appointment.phone) {
+                    const multiChannelResult = await sendMultiChannelNotification(
+                        appointment.email,
+                        appointment.phone,
+                        appointment.name,
+                        appointment.doctor?.name || 'Doctor',
+                        appointment.date,
+                        appointment.time,
+                        patientVideoCallLink
+                    );
+                    
+                    if (multiChannelResult.whatsapp.success) {
+                        console.log('✅ WhatsApp notification prepared');
+                    }
+                    
+                    if (multiChannelResult.sms.success) {
+                        console.log('✅ SMS sent successfully');
+                    }
+                }
+                
+            } catch (notificationError) {
+                console.error('❌ Error sending notifications:', notificationError);
+                // Don't fail the video call generation if notifications fail
             }
             
             // Transform the data to match frontend expectations

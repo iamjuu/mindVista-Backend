@@ -12,12 +12,10 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // ----------------- MIDDLEWARE -----------------
+const corsOrigins = process.env.CORS_ORIGINS ? process.env.CORS_ORIGINS.split(',') : [];
+
 app.use(cors({ 
-  origin: [
-    'https://mind-vista-psychology-web-app-dvb3.vercel.app',
-    // 'http://localhost:5173',
-    // 'http://localhost:5174',
-  ],
+  origin: corsOrigins,
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   allowedHeaders: ['Content-Type']
 }));
@@ -230,8 +228,8 @@ const startServer = async () => {
   try {
     await DatabaseConnection();
     server.listen(PORT, () => {
-      console.log(`🚀 Server running on http://localhost:${PORT}`);
-      console.log(`📡 WebSocket signaling server ready on ws://localhost:${PORT}`);
+      console.log(`🚀 Server running on ${process.env.BACKEND_URL || `http://localhost:${PORT}`}`);
+      console.log(`📡 WebSocket signaling server ready on ${process.env.SIGNALING_SERVER_URL || `ws://localhost:${PORT}`}`);
     });
   } catch (error) {
     console.error('❌ Failed to start server:', error);

@@ -7,10 +7,10 @@
  * Usage: node test-dashboard-api.js
  */
 
+require('dotenv').config();
 const http = require('http');
 
-const BASE_URL = 'https://mind-vista-backend.vercel.app';
-// const BASE_URL = 'http://localhost:3000';  // for local dev
+const BASE_URL = process.env.BACKEND_URL;
 const tests = [];
 let passedTests = 0;
 let failedTests = 0;

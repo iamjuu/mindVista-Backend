@@ -18,8 +18,7 @@ router.get('/video-call/:videoCallId/details', async (req, res) => {
       });
     }
 
-    // const baseUrl = process.env.FRONTEND_URL || 'http://localhost:5173';  // for local dev
-    const baseUrl = process.env.FRONTEND_URL || 'https://mind-vista-psychology-web-app-dvb3.vercel.app';
+    const baseUrl = process.env.FRONTEND_URL ;
 
     res.json({
       success: true,
