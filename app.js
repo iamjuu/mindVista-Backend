@@ -12,13 +12,34 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // ----------------- MIDDLEWARE -----------------
-const corsOrigins = process.env.CORS_ORIGINS ? process.env.CORS_ORIGINS.split(',') : [];
+const corsOrigins = process.env.CORS_ORIGINS ? process.env.CORS_ORIGINS.split(',').map(origin => origin.trim()) : [];
+console.log('🔐 CORS Origins configured:', corsOrigins);
+console.log('🔐 CORS_ORIGINS raw env:', process.env.CORS_ORIGINS ? 'SET' : 'NOT SET');
 
-app.use(cors({ 
-  origin: corsOrigins,
-  methods: ['GET', 'POST', 'PUT', 'DELETE'],
-  allowedHeaders: ['Content-Type']
-}));
+const corsOptions = {
+  origin: function (origin, callback) {
+    console.log('🔐 CORS check | origin:', origin || '(no origin header)');
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) {
+      console.log('🔐 CORS: ALLOW (no origin)');
+      return callback(null, true);
+    }
+
+    const isAllowed = corsOrigins.length === 0 || corsOrigins.indexOf(origin) !== -1;
+    if (isAllowed) {
+      console.log('🔐 CORS: ALLOW origin:', origin);
+      callback(null, true);
+    } else {
+      console.log('🔐 CORS: BLOCKED origin:', origin, '| allowed:', corsOrigins);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  credentials: true
+};
+
+app.use(cors(corsOptions));
 
 app.use(bodyParser.json());
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
@@ -226,6 +247,7 @@ app.get('/health', (req, res) => {
 // ----------------- START SERVER (local only; Vercel uses the exported app) -----------------
 const startServer = async () => {
   try {
+    const backend =false
     await DatabaseConnection();
     server.listen(PORT, () => {
       console.log(`🚀 Server running on ${process.env.BACKEND_URL || `http://localhost:${PORT}`}`);
