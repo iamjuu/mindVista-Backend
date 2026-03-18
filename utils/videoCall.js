@@ -20,7 +20,7 @@ const generateVideoCallLink = (appointmentId, doctorId, patientName) => {
         const videoCallId = `vc-${hash.substring(0, 12)}-${timestampStr.substring(timestampStr.length - 6)}`;
         
         // Generate the video call link
-        const baseUrl = process.env.FRONTEND_URL ;
+        const baseUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
         const videoCallLink = `${baseUrl}/video-call/${videoCallId}`;
         
         console.log('✅ Generated video call link:', {
