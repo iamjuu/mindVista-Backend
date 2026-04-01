@@ -5,6 +5,8 @@ const Profile = require('./profile');
 const Notification = require('./notification');
 const Review = require('./review');
 const Note = require('./note');
+const PatientUser = require('./patientUser');
+const PatientLoginOtp = require('./patientLoginOtp');
 
 module.exports = {
   Doctor,
@@ -12,7 +14,9 @@ module.exports = {
   Profile,
   Notification,
   Review,
-  Note
+  Note,
+  PatientUser,
+  PatientLoginOtp,
 };
 
 

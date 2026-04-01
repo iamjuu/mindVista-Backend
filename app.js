@@ -70,6 +70,7 @@ const VideoCallLinkRouter = require('./router/videoCallLinkRouter');
 const VideoCallStatusRouter = require('./router/videoCallStatus');
 const ReviewRouter = require('./router/review');
 const DashboardRouter = require('./router/dashboard');
+const PatientAuthRouter = require('./router/patientAuth');
 
 app.use('/api', NotificationRouter);
 app.use('/api', ProfileRouter);
@@ -82,6 +83,7 @@ app.use('/api', VideoCallLinkRouter);
 app.use('/api', VideoCallStatusRouter);
 app.use('/api', ReviewRouter);
 app.use('/api/dashboard', DashboardRouter);
+app.use('/api', PatientAuthRouter);
 
 // ----------------- HTTP + WS SERVER -----------------
 const server = http.createServer(app);

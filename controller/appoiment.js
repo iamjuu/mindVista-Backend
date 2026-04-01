@@ -295,10 +295,19 @@ module.exports = {
                     message: 'Appointment not found'
                 });
             }
+            const doctorId = appointment.doctor?._id?.toString?.() || appointment.doctor?.toString?.() || null;
+            const doctorName = appointment.doctor?.name || appointment.doctorName || 'Doctor';
+
+            if (!doctorId) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Doctor reference missing for this appointment'
+                });
+            }
             // Generate unique video call link
             const videoCallResult = generateVideoCallLink(
                 appointment._id.toString(),
-                appointment.doctor._id.toString(),
+                doctorId,
                 appointment.name
             );
 
@@ -317,6 +326,11 @@ module.exports = {
             appointment.videoCallId = videoCallResult.videoCallId;
             appointment.videoCallGenerated = true;
             await appointment.save();
+            const notificationStatus = {
+                email: { success: false },
+                whatsapp: { success: false },
+                sms: { success: false }
+            };
             
             // Send approval notifications via Email, WhatsApp, and SMS
             try {
@@ -332,11 +346,12 @@ module.exports = {
                 const emailResult = await sendApprovalEmailWithVideoCall(
                     appointment.email,
                     appointment.name,
-                    appointment.doctor?.name || 'Doctor',
+                    doctorName,
                     appointment.date,
                     appointment.time,
                     patientVideoCallLink
                 );
+                notificationStatus.email = emailResult;
                 
                 if (emailResult.success) {
                     console.log('✅ Appointment approval email with video call link sent successfully to:', appointment.email);
@@ -352,11 +367,13 @@ module.exports = {
                         appointment.email,
                         appointment.phone,
                         appointment.name,
-                        appointment.doctor?.name || 'Doctor',
+                        doctorName,
                         appointment.date,
                         appointment.time,
                         patientVideoCallLink
                     );
+                    notificationStatus.whatsapp = multiChannelResult.whatsapp;
+                    notificationStatus.sms = multiChannelResult.sms;
                     
                     if (multiChannelResult.whatsapp.success) {
                         console.log('✅ WhatsApp notification prepared:', multiChannelResult.whatsapp.whatsappURL);
@@ -402,7 +419,10 @@ module.exports = {
             res.status(200).json({
                 success: true,
                 data: transformedAppointment,
-                message: 'Appointment approved successfully with video call link generated'
+                notifications: notificationStatus,
+                message: notificationStatus.email.success
+                    ? 'Appointment approved successfully with video call link generated and email sent'
+                    : 'Appointment approved successfully, but the approval email could not be sent'
             });
         } catch (error) {
             console.error('Error approving appointment:', error);
@@ -431,6 +451,7 @@ module.exports = {
             // Update appointment status
             appointment.status = 'declined';
             await appointment.save();
+            const emailStatus = { success: false };
             
             // Send decline email directly to the patient
             try {
@@ -442,6 +463,7 @@ module.exports = {
                     appointment.time,
                     reason || 'Schedule conflict'
                 );
+                Object.assign(emailStatus, emailResult);
                 
                 if (emailResult.success) {
                     console.log('✅ Appointment decline email sent successfully to:', appointment.email);
@@ -472,7 +494,10 @@ module.exports = {
             res.status(200).json({
                 success: true,
                 data: transformedAppointment,
-                message: 'Appointment declined successfully'
+                notifications: { email: emailStatus },
+                message: emailStatus.success
+                    ? 'Appointment declined successfully and email sent'
+                    : 'Appointment declined successfully, but the decline email could not be sent'
             });
         } catch (error) {
             console.error('Error declining appointment:', error);
@@ -757,10 +782,20 @@ module.exports = {
                 });
             }
 
+            const doctorId = appointment.doctor?._id?.toString?.() || appointment.doctor?.toString?.() || null;
+            const doctorName = appointment.doctor?.name || appointment.doctorName || 'Doctor';
+
+            if (!doctorId) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Doctor reference missing for this appointment'
+                });
+            }
+
             // Generate unique video call link
             const videoCallResult = generateVideoCallLink(
                 appointment._id.toString(),
-                appointment.doctor._id.toString(),
+                doctorId,
                 appointment.name
             );
 
@@ -778,6 +813,11 @@ module.exports = {
             appointment.videoCallId = videoCallResult.videoCallId;
             appointment.videoCallGenerated = true;
             await appointment.save();
+            const notificationStatus = {
+                email: { success: false },
+                whatsapp: { success: false },
+                sms: { success: false }
+            };
             
             // Send email with video call link
             try {
@@ -786,11 +826,12 @@ module.exports = {
                 const emailResult = await sendApprovalEmailWithVideoCall(
                     appointment.email,
                     appointment.name,
-                    appointment.doctor?.name || 'Doctor',
+                    doctorName,
                     appointment.date,
                     appointment.time,
                     patientVideoCallLink
                 );
+                notificationStatus.email = emailResult;
                 
                 if (emailResult.success) {
                     console.log('✅ Video call link email sent successfully to:', appointment.email);
@@ -804,11 +845,13 @@ module.exports = {
                         appointment.email,
                         appointment.phone,
                         appointment.name,
-                        appointment.doctor?.name || 'Doctor',
+                        doctorName,
                         appointment.date,
                         appointment.time,
                         patientVideoCallLink
                     );
+                    notificationStatus.whatsapp = multiChannelResult.whatsapp;
+                    notificationStatus.sms = multiChannelResult.sms;
                     
                     if (multiChannelResult.whatsapp.success) {
                         console.log('✅ WhatsApp notification prepared');
@@ -848,7 +891,10 @@ module.exports = {
             res.status(200).json({
                 success: true,
                 data: transformedAppointment,
-                message: 'Video call link generated successfully for confirmed appointment'
+                notifications: notificationStatus,
+                message: notificationStatus.email.success
+                    ? 'Video call link generated successfully for confirmed appointment and email sent'
+                    : 'Video call link generated successfully, but the email could not be sent'
             });
         } catch (error) {
             console.error('Error generating video call link:', error);

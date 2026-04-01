@@ -419,10 +419,41 @@ const sendNotificationEmail = async (userEmail, userName, title, message, metada
     }
 };
 
+/**
+ * Send one-time login code for patient portal (valid ~1 minute).
+ */
+const sendPatientLoginOtp = async (patientEmail, otpCode) => {
+    try {
+        const transporter = createTransporter();
+        const mailOptions = {
+            from: process.env.EMAIL_USER,
+            to: patientEmail,
+            subject: 'Your MindVista login code',
+            html: `
+                <div style="font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto; padding: 24px;">
+                    <h1 style="color: #2563eb; font-size: 22px;">Login verification</h1>
+                    <p style="color: #374151; font-size: 15px;">Use this code to sign in to your patient profile. It expires in <strong>1 minute</strong>.</p>
+                    <div style="background: #f0f9ff; border-radius: 12px; padding: 20px; text-align: center; margin: 24px 0;">
+                        <span style="font-size: 32px; font-weight: bold; letter-spacing: 8px; color: #1e40af;">${otpCode}</span>
+                    </div>
+                    <p style="color: #6b7280; font-size: 13px;">If you did not request this, you can ignore this email.</p>
+                </div>
+            `,
+        };
+        const info = await transporter.sendMail(mailOptions);
+        console.log('✅ Patient login OTP sent to:', patientEmail);
+        return { success: true, messageId: info.messageId };
+    } catch (error) {
+        console.error('❌ Error sending patient login OTP:', error.message);
+        return { success: false, error: error.message };
+    }
+};
+
 module.exports = {
     sendApprovalEmail,
     sendDeclineEmail,
     sendDoctorApprovalEmail,
     sendApprovalEmailWithVideoCall,
-    sendNotificationEmail
+    sendNotificationEmail,
+    sendPatientLoginOtp,
 };
